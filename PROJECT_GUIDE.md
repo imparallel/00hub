@@ -10,24 +10,22 @@
 
 | 파일 | 역할 |
 | --- | --- |
-| **[00Hub.exe](file:///c:/Users/MY_NOTE/Desktop/2026%20WORKROOM/PRL%20Workspace/00_Hub/00Hub.exe)** | **메인 실행기.** 이걸 더블 클릭하면 서버가 몰래 켜지고 앱 창이 뜹니다. |
-| **[run_hub.bat](file:///c:/Users/MY_NOTE/Desktop/2026%20WORKROOM/PRL%20Workspace/00_Hub/run_hub.bat)** | 00Hub.exe의 이전 버전. 배치 파일(bat) 방식의 실행기입니다. |
-| [00Hub.exe](file:///c:/Users/MY_NOTE/Desktop/2026%20WORKROOM/PRL%20Workspace/00_Hub/00Hub.exe) | 00Hub 통합 실행 파일 (C# WebView2 기반) |
+| **[00Hub.exe](file:///c:/Users/MY_NOTE/Desktop/2026%20WORKROOM/PRL%20Workspace/00_Hub/00Hub.exe)** | **메인 실행기.** C# WebView2 기반의 통합 런처로, 서버 관리와 창 제어를 동시에 수행합니다. |
 | [Microsoft.Web.WebView2.Core.dll](./Microsoft.Web.WebView2.Core.dll) | WebView2 엔진 핵심 라이브러리 |
 | [Microsoft.Web.WebView2.WinForms.dll](./Microsoft.Web.WebView2.WinForms.dll) | WebView2 윈도우 폼 컨트롤 라이브러리 |
 | [WebView2Loader.dll](./WebView2Loader.dll) | WebView2 로더 모듈 |
-| [run_hub.bat](file:///c:/Users/MY_NOTE/Desktop/2026%20WORKROOM/PRL%20Workspace/00_Hub/run_hub.bat) | 런처 대신 배치 파일로 실행하고 싶을 때 사용 |
-| [stop_hub.bat](file:///c:/Users/MY_NOTE/Desktop/2026%20WORKROOM/PRL%20Workspace/00_Hub/stop_hub.bat) | 종료기. 백그라운드 서버와 런처 관련 프로세스를 강제 종료합니다. |
+| [run_hub.bat](file:///c:/Users/MY_NOTE/Desktop/2026%20WORKROOM/PRL%20Workspace/00_Hub/run_hub.bat) | 런처 대신 배치 파일로 실행하고 싶을 때 사용 (구버전) |
+| [stop_hub.bat](file:///c:/Users/MY_NOTE/Desktop/2026%20WORKROOM/PRL%20Workspace/00_Hub/stop_hub.bat) | 종료기. 백그라운드 서버와 런처 관련 프로세스를 완전히 종료합니다. |
 | [index.html](file:///c:/Users/MY_NOTE/Desktop/2026%20WORKROOM/PRL%20Workspace/00_Hub/index.html) | 웹 앱의 뼈대가 되는 HTML 파일. |
 | [vite.config.js](file:///c:/Users/MY_NOTE/Desktop/2026%20WORKROOM/PRL%20Workspace/00_Hub/vite.config.js) | 빌드 엔진(Vite)의 설정 파일. |
 | [eslint.config.js](file:///c:/Users/MY_NOTE/Desktop/2026%20WORKROOM/PRL%20Workspace/00_Hub/eslint.config.js) | 코드 품질 검사기 설정. |
 | [package.json](file:///c:/Users/MY_NOTE/Desktop/2026%20WORKROOM/PRL%20Workspace/00_Hub/package.json) | 프로젝트의 '이력서'. |
 | package-lock.json | 외부 도구 잠금 파일. |
 | [README.md](file:///c:/Users/MY_NOTE/Desktop/2026%20WORKROOM/PRL%20Workspace/00_Hub/README.md) | 프로젝트 메인 소개 문서. |
-| .gitignore | Git 제외 목록. |
-| [PROJECT_GUIDE.md](file:///c:/Users/MY_NOTE/Desktop/2026%20WORKROOM/PRL%20Workspace/00_Hub/PROJECT_GUIDE.md) | 현재 보고 계신 이 가이드. |
 | [ABOUT.md](file:///c:/Users/MY_NOTE/Desktop/2026%20WORKROOM/PRL%20Workspace/00_Hub/ABOUT.md) | 앱 디자인 및 기능 상세 소개. |
+| [PROJECT_GUIDE.md](file:///c:/Users/MY_NOTE/Desktop/2026%20WORKROOM/PRL%20Workspace/00_Hub/PROJECT_GUIDE.md) | 현재 보고 계신 이 가이드. |
 | [CODE_REFERENCE.md](file:///c:/Users/MY_NOTE/Desktop/2026%20WORKROOM/PRL%20Workspace/00_Hub/CODE_REFERENCE.md) | 코드별 상세 설명 레퍼런스. |
+| [ROADMAP.md](file:///c:/Users/MY_NOTE/Desktop/2026%20WORKROOM/PRL%20Workspace/00_Hub/ROADMAP.md) | 향후 개발 계획 및 알려진 이슈. |
 
 ---
 
@@ -99,14 +97,9 @@
 
 ---
 
-### 🔌 [electron/](file:///c:/Users/MY_NOTE/Desktop/2026%20WORKROOM/PRL%20Workspace/00_Hub/electron) — Electron 시도 흔적
+### 📂 [*.WebView2/](file:///c:/Users/MY_NOTE/Desktop/2026%20WORKROOM/PRL%20Workspace/00_Hub) — 브라우저 데이터 및 캐시
 
-PWA + 전용 런처 방식으로 결정하기 전, Electron(크롬 앱처럼 만드는 또 다른 기술)을 시도했던 흔적입니다. 현재는 사용하지 않습니다.
-
-| 파일 | 역할 |
-| --- | --- |
-| **main.cjs** | Electron 앱의 메인 진입점 코드. 창 크기(1400×900)와 열릴 URL 등이 설정되어 있습니다. |
-| **package.json** | Electron 패키지 설정 파일 (내용이 매우 간단함). |
+`00Hub.exe.WebView2` 폴더는 앱의 실행 데이터(LocalStorage 포함), 쿠키, 브라우저 캐시 등이 저장되는 곳입니다. 런처와 웹뷰 엔진이 자동으로 생성하고 관리합니다. (백업 시 이 폴더를 직접 옮기기보다는 앱 내 **Export** 기능을 권장합니다.)
 
 ---
 
@@ -127,7 +120,7 @@ Git이 모든 커밋 기록과 변경 이력을 저장하는 숨겨진 폴더입
 ```text
 평행 님이 00Hub.exe 실행
   → 백그라운드에서 npm run dev (Node.js 서버) 실행
-  → 3초 대기 후 Chrome 앱 모드로 localhost:5173 오픈
+  → 2초 대기 후 WebView2 창으로 localhost:5173 오픈
   → React 앱(src/)이 브라우저에 렌더링
   → 모든 데이터는 브라우저 LocalStorage에 저장
 ```

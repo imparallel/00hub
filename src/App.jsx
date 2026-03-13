@@ -35,7 +35,7 @@ function App() {
       return parsed.map(t => {
         if (t.completed !== undefined) {
           const status = t.completed ? 'done' : 'todo'
-          const { completed, ...rest } = t
+          const { completed: _c, ...rest } = t
           return { ...rest, status }
         }
         return t
@@ -92,6 +92,7 @@ function App() {
   })
 
   const [isZenMode, setIsZenMode] = useState(false)
+  // eslint-disable-next-line no-unused-vars
   const [zenFocus, setZenFocus] = useState(() => {
     const saved = localStorage.getItem('hub-zenFocus')
     return saved ? JSON.parse(saved) : ''
@@ -423,6 +424,7 @@ function App() {
   const handleQuestClick = (id) => toggleQuest(id)
 
   // ── Heatmap ──────────────────────────────────────────────────────────────────
+  // eslint-disable-next-line no-unused-vars
   const getHeatmapLevel = ratio => {
     if (ratio === 0) return 0
     if (ratio < 0.5) return 1

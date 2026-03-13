@@ -66,8 +66,8 @@ createRoot(document.getElementById('root')).render(
 
   /* CMYK 핵심 4색 */
   --cmyk-yellow:  #feda00;   /* Action Items, 에너지 */
-  --cmyk-cyan:    #00b0ff;   /* Focus Timer, 집중 */
   --cmyk-magenta: #ff0066;   /* Daily Quests, 습관 */
+  --cmyk-cyan:    #00b0ff;   /* Focus Timer, 집중 */
   --cmyk-black:   #121212;   /* 타이포그래피, 강조 */
 
   /* 그림자 단계 (sm → md → lg로 깊이감 증가) */
@@ -93,9 +93,9 @@ createRoot(document.getElementById('root')).render(
 ```css
 body {
   background-image:
-    radial-gradient(circle at 15% 50%, rgba(254,218,0,0.08) ...),   /* 왼쪽: 노랑 */
-    radial-gradient(circle at 85% 30%, rgba(0,176,255,0.08)  ...),  /* 오른쪽: 시안 */
-    radial-gradient(circle at 50% 80%, rgba(255,0,102,0.06)  ...);  /* 아래: 마젠타 */
+    radial-gradient(circle at 15% 50%, rgba(254,218,0,0.08) ...),   /* 노랑 (Yellow) */
+    radial-gradient(circle at 50% 80%, rgba(255,0,102,0.06)  ...),  /* 마젠타 (Magenta) */
+    radial-gradient(circle at 85% 30%, rgba(0,176,255,0.08)  ...);  /* 시안 (Cyan) */
 }
 ```
 
@@ -114,6 +114,7 @@ App.jsx
     ├── State 선언부 (useState)
     ├── 파생 계산 (Heatmap 비율)
     ├── useEffect 묶음 (타이머, 리셋, 저장 등)
+    ├── 텍스트 영역 자동 높이 조절 (adjustHeight & ResizeObserver)
     ├── 핸들러 함수들
     ├── ZEN MODE 렌더 (조건부 early return)
     └── MAIN DASHBOARD 렌더
@@ -173,7 +174,7 @@ function createWhiteNoise(ctx) {
 | `isFocusTimerRunning` | Boolean | `false` | 타이머 실행 중 여부 |
 | `brainDump` | String | localStorage 또는 `''` | Brain Dump 메모 내용 |
 | `oneThing` | String | localStorage 또는 `''` | "The One Thing" 입력 내용 |
-| `isZenMode` | Boolean | `false` | 젠 모드 ON/OFF |
+| `isZenMode` | Boolean | `false` | 젠 모드 ON/OFF (진입 시 런처에 `topmost:true` 전송) |
 | `zenFocus` | String | localStorage 또는 `''` | 젠 모드 포커스 텍스트 (현재는 oneThing과 공유) |
 | `zenFocusTimeSeconds` | Number | `0` | 젠 모드 전용 타이머 초 |
 | `isZenTimerRunning` | Boolean | `false` | 젠 타이머 실행 중 여부 |
@@ -184,11 +185,7 @@ function createWhiteNoise(ctx) {
 ### 3-4. Heatmap 비율 계산 (파생 계산)
 
 ```jsx
-// 1. Quests 달성률 (Magenta)
-const completedQuests = quests.filter(q => q.completed).length
-const questsRatio = quests.length > 0 ? completedQuests / quests.length : 0
-
-// 2. Action Items 점수 (Yellow)
+// 1. Action Items 점수 (Yellow)
 //    DONE = 1점, DOING = 서브퀘스트 완료율 × 0.8점, TODO = 0점
 let totalActionScore = 0
 todos.forEach(t => {
@@ -199,6 +196,10 @@ todos.forEach(t => {
   }
 })
 const todosRatio = todos.length > 0 ? totalActionScore / todos.length : 0
+
+// 2. Quests 달성률 (Magenta)
+const completedQuests = quests.filter(q => q.completed).length
+const questsRatio = quests.length > 0 ? completedQuests / quests.length : 0
 
 // 3. Focus 달성률 (Cyan) — 목표: 3시간(10800초)
 const targetFocusSeconds = 10800
@@ -241,23 +242,42 @@ useEffect(() => {
 }, [])  // 앱이 처음 켜질 때 한 번만 실행
 ```
 
-#### Zen Mode 진입/탈출 처리
+#### Zen Mode & 런처 통신
 
 ```jsx
 useEffect(() => {
   if (!isZenMode) {
-    // 젠 탈출: 소음 끄기 + 젠 타이머 → 메인 타이머에 합산
+    // 젠 탈출: 런처에 상단 고정 해제 요청 + 백색소음 정지
+    window.chrome?.webview?.postMessage("topmost:false")
     if (zenFocusTimeSeconds > 0) {
       setFocusTimeSeconds(s => s + zenFocusTimeSeconds)
       setZenFocusTimeSeconds(0)
     }
   } else {
-    // 젠 진입: 백색소음 자동 시작 + 젠 타이머 시작
-    // ... 오디오 컨텍스트 생성 및 소음 재생 코드
+    // 젠 진입: 런처에 상단 고정 요청 + 백색소음 시작
+    window.chrome?.webview?.postMessage("topmost:true")
     setIsZenTimerRunning(true)
   }
 }, [isZenMode])
 ```
+
+> **상단 고정(TopMost)**: 평소에는 Alt+Tab 멀티태스킹이 가능하도록 자유를 주다가, 젠 모드에서만 런처에 메시지를 보내 최상단에 고정시킵니다.
+
+#### 텍스트 영역 자동 높이 조절 (Precision Resize)
+
+```jsx
+const adjustHeight = useCallback(() => {
+  requestAnimationFrame(() => {
+    if (zenFrogRef.current) {
+      zenFrogRef.current.style.height = 'auto'
+      zenFrogRef.current.style.height = `${zenFrogRef.current.scrollHeight}px`
+    }
+    // ... heroRef도 동일 처리
+  })
+}, [])
+```
+
+> **The One Thing** 입력창이 내용에 따라 자동으로 늘어납니다. `ResizeObserver`를 연동하여 창 크기가 변할 때도 즉시 대응하며, `requestAnimationFrame`을 써서 시각적 깜빡임을 최소화했습니다.
 
 ---
 
@@ -314,7 +334,7 @@ const onDragEnd = (result) => {
 
 ## 4. `src/App.css` — 컴포넌트 디자인 시스템
 
-### 주요 섹션 구조 (1501줄)
+### 주요 섹션 구조 (약 1,550줄)
 
 ```text
 App.css

@@ -11,8 +11,8 @@
   
   /* Logo Derived CMYK */
   --cmyk-yellow: #feda00;
-  --cmyk-cyan: #00b0ff;
   --cmyk-magenta: #ff0066;
+  --cmyk-cyan: #00b0ff;
   --cmyk-black: #121212;
 
   --color-accent-primary: var(--cmyk-yellow); 
