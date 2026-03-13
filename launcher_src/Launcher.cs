@@ -9,6 +9,7 @@ using System.Windows.Forms;
 using System.Drawing;
 using Microsoft.Web.WebView2.WinForms;
 using Microsoft.Web.WebView2.Core;
+using System.Threading.Tasks;
 
 class Launcher : Form {
     [DllImport("shell32.dll", SetLastError = true)]
@@ -75,7 +76,7 @@ class Launcher : Form {
             };
 
             // Wait a bit for server to be ready
-            Thread.Sleep(2000);
+            await Task.Delay(2000);
             webView.Source = new Uri("http://localhost:5173");
         } catch (Exception ex) {
             MessageBox.Show("WebView2 초기화 실패: " + ex.Message);
