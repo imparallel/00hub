@@ -9,11 +9,11 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['icon-512.png'],
       manifest: {
-        name: '00_Hub — Personal Command Center',
-        short_name: '00_Hub',
-        description: 'Your ADHD-friendly personal productivity hub',
-        theme_color: '#000000',
-        background_color: '#f5f4f0',
+        name: '00Hub',
+        short_name: '00Hub',
+        description: 'Personal Productivity Command Center',
+        theme_color: '#f4f5f7',
+        background_color: '#f4f5f7',
         display: 'standalone',
         orientation: 'portrait',
         start_url: '/',
@@ -29,6 +29,10 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         runtimeCaching: []
+      },
+      devOptions: {
+        enabled: true,
+        type: 'module'
       }
     })
   ],
