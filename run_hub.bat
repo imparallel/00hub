@@ -30,25 +30,9 @@ for /f "tokens=5" %%a in ('netstat -aon ^| findstr :5173 ^| findstr LISTENING') 
 )
 
 :: Launch
-echo [+] Starting dev server in background (Hidden)...
-echo.
+echo [+] Launching 00Hub (Smart Launcher)...
+start "" "00Hub.exe"
 
-:: Start Vite dev server completely hidden without parent CMD hanging
-powershell -NoProfile -WindowStyle Hidden -Command "Start-Process npm -ArgumentList 'run', 'dev' -WindowStyle Hidden"
-
-:: Wait for server initialization
-timeout /t 3 /nobreak >nul
-
-:: Launch browser in app mode (Maintains 'New Window' and 'App' look)
-echo [+] Launching Hub in App Mode...
-start chrome --app="http://localhost:5173" 2>nul
-if %ERRORLEVEL% NEQ 0 (
-    start msedge --app="http://localhost:5173" 2>nul
-)
-if %ERRORLEVEL% NEQ 0 (
-    start "" "http://localhost:5173"
-)
-
-:: Exit the launcher immediately and completely
-echo [!] Hub is active. Launcher closing.
+:: Exit
+echo [!] Hub is active.
 exit

@@ -12,7 +12,7 @@
 - 🏠 **운영 환경**: 로컬 실행 (인터넷 연결 불필요)
 - 🎨 **디자인 철학**: CMYK 잉크 시스템을 재해석한 독자적 컬러 브랜딩
 - 💾 **데이터**: 브라우저 LocalStorage (서버·로그인 없음)
-- 🖥 **실행 방식**: `Hub.exe` 더블 클릭 → 앱 모드로 즉시 실행
+- 🖥 **실행 방식**: `00Hub.exe` 더블 클릭 → 앱 모드로 즉시 실행
 
 ---
 
@@ -133,7 +133,7 @@ Black   #121212  → 기반, 명확함, 타이포그래피
 | 앱화 (PWA) | vite-plugin-pwa + Workbox |
 | 드래그 앤 드롭 | @hello-pangea/dnd |
 | 오디오 | Web Audio API (백색소음 실시간 생성) |
-| 런처 | C# 자체 제작 (Hub.exe) |
+| 런처 | C# 자체 제작 (00Hub.exe) |
 | 데이터 저장 | Browser LocalStorage |
 | 배포 형태 | 로컬 자체 실행 (no server, no cloud) |
 
@@ -142,7 +142,7 @@ Black   #121212  → 기반, 명확함, 타이포그래피
 ## ⚡ 실행 방법
 
 ```text
-Hub.exe 더블 클릭
+00Hub.exe 더블 클릭
   → npm run dev (Node.js 개발 서버) 백그라운드 실행
   → 3초 대기
   → Chrome 앱 모드 창 오픈 (localhost:5173)
@@ -160,7 +160,7 @@ Hub.exe 더블 클릭
 2. **V2** — Brain Dump, Kanban Flow, Zen Mode, Heatmap 추가
 3. **디자인 고도화** — CMYK 팔레트, Glassmorphism 카드, 앰비언트 배경
 4. **앱 모드 전환** — Electron 시도 → PWA + 전용 런처 방식으로 결정
-5. **런처 완성** — C#으로 `Hub.exe` 직접 제작, 아이콘 내장
+5. **런처 완성** — C#으로 `00Hub.exe` 직접 제작, 아이콘 내장
 6. **UX 다듬기** — 드래그 앤 드롭, 인라인 편집, 새 항목 상단 추가 등
 
 ---

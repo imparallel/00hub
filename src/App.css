@@ -93,22 +93,60 @@
   transform: translateY(-1px);
 }
 
-.btn-icon-minimal {
-  font-size: 1.1rem;
-  background: transparent;
-  border: 1px solid transparent;
-  padding: 0.4rem 0.6rem;
-  border-radius: var(--border-radius-sm);
-  cursor: pointer;
-  transition: var(--transition-fast);
-  color: var(--color-text-secondary);
+/* Chrome-style Overlay Control Bar */
+.fullscreen-overlay-trigger {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 20px; /* Trigger area */
+  z-index: 10000;
   display: flex;
-  align-items: center;
   justify-content: center;
 }
 
-.btn-icon-minimal:hover {
-  background: rgba(0, 0, 0, 0.05);
+.fullscreen-overlay-bar {
+  position: absolute;
+  top: 0;
+  transform: translateY(-100%);
+  background: rgba(255, 255, 255, 0.4); /* Much more transparent */
+  backdrop-filter: blur(20px) saturate(180%); /* Enhanced glass effect */
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  padding: 0.4rem 2.8rem;
+  border-radius: 0 0 20px 20px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-top: none;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.05);
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+  cursor: pointer; /* Feedback that it's clickable */
+}
+
+.fullscreen-overlay-trigger:hover .fullscreen-overlay-bar {
+  transform: translateY(0);
+}
+
+.overlay-close-icon {
+  font-size: 1.5rem;
+  font-weight: 300;
+  color: var(--color-text-secondary);
+  transition: all 0.2s ease;
+  line-height: 1;
+  user-select: none;
+}
+
+.fullscreen-overlay-bar:hover .overlay-close-icon {
+  color: var(--cmyk-magenta);
+  transform: scale(1.1);
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
 }
 
 
@@ -455,9 +493,9 @@
   outline: none;
   transition: all 0.2s ease-out;
   line-height: 1.25;
-  /* 쑨쇿칰?섎챷??밸샨 */
   letter-spacing: -2px;
   opacity: 1;
+  overflow: visible; /* 잘림 방지 안전장치 */
 }
 
 .one-thing-hero-input::placeholder {
@@ -1320,6 +1358,9 @@
   height: auto;
   line-height: 1.1;
   letter-spacing: -3px;
+  padding: 0.5rem 1rem 1rem; /* 여백 원래대로 복구 */
+  min-height: 1.2em;
+  overflow: visible; /* 잘림 방지 안전장치 */
 }
 
 .zen-frog-input::placeholder {
@@ -1436,6 +1477,16 @@
 
   .clock-time {
     font-size: 1.5rem;
+  }
+
+  /* Zen Mode Responsive Fix */
+  .zen-frog-input {
+    font-size: clamp(2.5rem, 12vw, 4.5rem);
+    letter-spacing: -2px;
+  }
+
+  .zen-timer {
+    font-size: 2.5rem;
   }
 }
 

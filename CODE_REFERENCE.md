@@ -387,7 +387,7 @@ VitePWA({
 
 ```js
 server: {
-  port: 5173,         // 개발 서버 포트 (Hub.exe가 이 포트로 접속)
+  port: 5173,         // 개발 서버 포트 (00Hub.exe가 이 포트로 접속)
   strictPort: true    // 포트 사용 중이면 에러 발생 (자동으로 다른 포트 잡지 않음)
 }
 ```
@@ -428,7 +428,7 @@ Main() (STAThread)
 
 #### 1) 작업 표시줄 그룹 설정
 
-이 코드는 여전히 유지되어, `Hub.exe`라는 하나의 아이콘으로 모든 프로세스를 묶어줍니다.
+이 코드는 여전히 유지되어, `00Hub.exe`라는 하나의 아이콘으로 모든 프로세스를 묶어줍니다.
 
 #### 2) WebView2 브라우저 삽입
 
@@ -448,7 +448,7 @@ webView.Source = new Uri("http://localhost:5173");
 
 #### 4) 정적 라이브러리 의존성
 
-실행을 위해 `Hub.exe`와 같은 폴더에 다음 DLL들이 반드시 함께 있어야 합니다:
+실행을 위해 `00Hub.exe`와 같은 폴더에 다음 DLL들이 반드시 함께 있어야 합니다:
 
 - `Microsoft.Web.WebView2.Core.dll`
 - `Microsoft.Web.WebView2.WinForms.dll`

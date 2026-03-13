@@ -97,17 +97,44 @@ function App() {
     return saved ? JSON.parse(saved) : ''
   })
 
-  // Textarea auto-resize (zen + hero)
+  // Textarea auto-resize (zen + hero) with high precision
+  const adjustHeight = useCallback(() => {
+    // requestAnimationFrame을 사용하여 브라우저가 레이아웃을 확정한 직후의scrollHeight를 정확히 측정
+    requestAnimationFrame(() => {
+      if (zenFrogRef.current) {
+        zenFrogRef.current.style.height = 'auto'
+        zenFrogRef.current.style.height = `${zenFrogRef.current.scrollHeight}px`
+      }
+      if (heroRef.current) {
+        heroRef.current.style.height = 'auto'
+        heroRef.current.style.height = `${heroRef.current.scrollHeight}px`
+      }
+    })
+  }, [])
+
   useEffect(() => {
-    if (zenFrogRef.current) {
-      zenFrogRef.current.style.height = 'auto'
-      zenFrogRef.current.style.height = zenFrogRef.current.scrollHeight + 'px'
+    adjustHeight()
+    // 애니메이션이나 전환 도중 발생할 수 있는 오차를 위해 다중 프레임 재계산
+    const timeouts = [0, 100, 300].map(ms => setTimeout(adjustHeight, ms))
+    return () => timeouts.forEach(clearTimeout)
+  }, [oneThing, isZenMode, adjustHeight])
+
+  // ResizeObserver를 사용하여 어떤 이유로든 크기가 변할 때 즉시 대응
+  useEffect(() => {
+    if (!window.ResizeObserver) {
+      window.addEventListener('resize', adjustHeight)
+      return () => window.removeEventListener('resize', adjustHeight)
     }
-    if (heroRef.current) {
-      heroRef.current.style.height = 'auto'
-      heroRef.current.style.height = heroRef.current.scrollHeight + 'px'
-    }
-  }, [oneThing, isZenMode])
+
+    const observer = new ResizeObserver(() => {
+      adjustHeight()
+    })
+
+    if (zenFrogRef.current) observer.observe(zenFrogRef.current)
+    if (heroRef.current) observer.observe(heroRef.current)
+
+    return () => observer.disconnect()
+  }, [adjustHeight])
 
   const audioCtxRef = useRef(null)
   const noiseRef = useRef(null)
@@ -230,41 +257,30 @@ function App() {
     }
   }, [isNoiseOn])
 
-  // Stop noise and handle Zen Timer when exiting zen mode
+  // Sync isZenMode (Simplified for always-fullscreen mode)
   useEffect(() => {
     if (!isZenMode) {
-      // 젠 탈출: 전체화면 해제 시도
-      if (document.fullscreenElement) {
-        document.exitFullscreen().catch(() => {});
-      }
-      // 소음 끄기
+      window.chrome?.webview?.postMessage("topmost:false")
       if (isNoiseOn) {
         noiseRef.current?.source.stop()
         noiseRef.current = null
         setIsNoiseOn(false)
       }
-      // 젠 타이머만 메인 타이머에 합산
       if (zenFocusTimeSeconds > 0) {
         setFocusTimeSeconds(s => s + zenFocusTimeSeconds)
         setZenFocusTimeSeconds(0)
       }
       setIsZenTimerRunning(false)
-      // 젠 진입 전에 DWT가 켜져 있었다면 다시 재개
       if (wasDwtRunning.current) {
         setIsFocusTimerRunning(true)
         wasDwtRunning.current = false
       }
     } else {
-      // 젠 진입: 전체화면 요청
-      if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen().catch(() => {});
-      }
-      // DWT가 켜져 있으면 일시정지 후 ref에 기록
+      window.chrome?.webview?.postMessage("topmost:true")
       if (isFocusTimerRunning) {
         wasDwtRunning.current = true
         setIsFocusTimerRunning(false)
       }
-      // 자동 백색소음 시작
       if (!isNoiseOn && !noiseRef.current) {
         if (!audioCtxRef.current) {
           audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)()
@@ -279,17 +295,6 @@ function App() {
       setIsZenTimerRunning(true)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isZenMode])
-
-  // Sync isZenMode if user exits fullscreen manually (e.g. Esc key)
-  useEffect(() => {
-    const handleFsChange = () => {
-      if (!document.fullscreenElement && isZenMode) {
-        setIsZenMode(false)
-      }
-    }
-    document.addEventListener('fullscreenchange', handleFsChange)
-    return () => document.removeEventListener('fullscreenchange', handleFsChange)
   }, [isZenMode])
 
   // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -500,6 +505,16 @@ function App() {
           </div>
         </div>
       </header>
+
+      {/* Chrome-style Overlay Control Bar */}
+      <div className="fullscreen-overlay-trigger">
+        <div 
+          className="fullscreen-overlay-bar"
+          onClick={() => window.chrome?.webview?.postMessage("close")}
+        >
+          <span className="overlay-close-icon">×</span>
+        </div>
+      </div>
 
       {/* THE ONE THING — Hero Typography */}
       <div className="one-thing-hero">

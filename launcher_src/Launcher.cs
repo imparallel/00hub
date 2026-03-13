@@ -26,20 +26,91 @@ class Launcher : Form {
         Application.Run(new Launcher());
     }
 
+    private NotifyIcon trayIcon;
+    private ContextMenu trayMenu;
+
     public Launcher() {
         this.Text = "00Hub.";
-        this.Size = new Size(1280, 800);
-        this.StartPosition = FormStartPosition.CenterScreen;
+        this.FormBorderStyle = FormBorderStyle.None; // 테두리 제거
+        this.WindowState = FormWindowState.Maximized; // 전체화면
         this.Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
+        // this.TopMost = true; // Alt+Tab 전환을 위해 상시 TopMost는 제거
+        this.ShowInTaskbar = false; // 작업 표시줄에서 숨김
+
+        InitializeTrayIcon();
 
         // 1. Kill existing port 5173 if busy
         KillPort(5173);
 
-        // 2. Start npm run dev hidden
+        // 2. Register to Startup (Optional but requested)
+        RegisterStartup();
+
+        // 3. Start npm run dev hidden
         StartServer();
 
-        // 3. Initialize WebView2
+        // 4. Initialize WebView2
         InitializeWebView();
+    }
+
+    private void InitializeTrayIcon() {
+        trayMenu = new ContextMenu();
+        trayMenu.MenuItems.Add("00Hub. 열기", (s, e) => {
+            this.WindowState = FormWindowState.Minimized; // 강제 갱신용
+            this.WindowState = FormWindowState.Maximized;
+            this.Show();
+            this.Activate();
+        });
+
+        // 모니터 이동 서브메뉴 추가
+        MenuItem monitorMenu = new MenuItem("모니터 이동");
+        for (int i = 0; i < Screen.AllScreens.Length; i++) {
+            int index = i;
+            monitorMenu.MenuItems.Add(string.Format("모니터 {0} ({1})", i + 1, index == 0 ? "주" : "보조"), (s, e) => {
+                MoveToMonitor(index);
+            });
+        }
+        trayMenu.MenuItems.Add(monitorMenu);
+
+        trayMenu.MenuItems.Add("-"); // 구분선
+        trayMenu.MenuItems.Add("완전 종료", (s, e) => {
+            Application.Exit();
+        });
+
+        trayIcon = new NotifyIcon();
+        trayIcon.Text = "00Hub.";
+        trayIcon.Icon = this.Icon;
+        trayIcon.ContextMenu = trayMenu;
+        trayIcon.Visible = true;
+
+        trayIcon.DoubleClick += (s, e) => {
+            this.WindowState = FormWindowState.Maximized;
+            this.Show();
+            this.Activate();
+        };
+    }
+
+    private void MoveToMonitor(int index) {
+        if (index >= 0 && index < Screen.AllScreens.Length) {
+            Screen targetScreen = Screen.AllScreens[index];
+            this.WindowState = FormWindowState.Normal;
+            this.StartPosition = FormStartPosition.Manual;
+            this.Location = targetScreen.Bounds.Location;
+            this.Size = targetScreen.Bounds.Size;
+            this.WindowState = FormWindowState.Maximized;
+        }
+    }
+
+    private void RegisterStartup() {
+        try {
+            string appName = "00Hub";
+            // 경로에 공백이 있으므로 따옴표로 감싸야 윈도우가 정확히 인식함
+            string appPath = "\"" + Application.ExecutablePath + "\"";
+            using (var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", true)) {
+                if (key != null) {
+                    key.SetValue(appName, appPath);
+                }
+            }
+        } catch {}
     }
 
     private void StartServer() {
@@ -53,6 +124,9 @@ class Launcher : Form {
         serverProcess = Process.Start(serverInfo);
     }
 
+    private FormWindowState lastWindowState = FormWindowState.Normal;
+    private FormBorderStyle lastBorderStyle = FormBorderStyle.Sizable;
+
     private async void InitializeWebView() {
         webView = new WebView2();
         webView.Dock = DockStyle.Fill;
@@ -60,22 +134,33 @@ class Launcher : Form {
 
         try {
             await webView.EnsureCoreWebView2Async(null);
-            webView.CoreWebView2.Settings.AreDefaultContextMenusEnabled = false; // 깔끔한 UI를 위해 우클릭 메뉴 비활성화
+            webView.CoreWebView2.Settings.AreDefaultContextMenusEnabled = false; 
             
-            // 전체화면 요청 처리 이벤트 추가
             webView.CoreWebView2.ContainsFullScreenElementChanged += (sender, args) => {
-                if (webView.CoreWebView2.ContainsFullScreenElement) {
-                    // 전체화면 진입
+                this.BeginInvoke((MethodInvoker)delegate {
+                    // 상시 전체화면 형태 유지하되 Alt+Tab 방해하지 않음
                     this.FormBorderStyle = FormBorderStyle.None;
                     this.WindowState = FormWindowState.Maximized;
-                } else {
-                    // 전체화면 탈출
-                    this.FormBorderStyle = FormBorderStyle.Sizable;
-                    this.WindowState = FormWindowState.Normal;
+                });
+            };
+
+            webView.CoreWebView2.WebMessageReceived += (sender, args) => {
+                string message = args.TryGetWebMessageAsString();
+                if (message == "minimize" || message == "close") {
+                    this.BeginInvoke((MethodInvoker)delegate {
+                        this.WindowState = FormWindowState.Minimized;
+                    });
+                } else if (message == "topmost:true") {
+                    this.BeginInvoke((MethodInvoker)delegate {
+                        this.TopMost = true;
+                    });
+                } else if (message == "topmost:false") {
+                    this.BeginInvoke((MethodInvoker)delegate {
+                        this.TopMost = false;
+                    });
                 }
             };
 
-            // Wait a bit for server to be ready
             await Task.Delay(2000);
             webView.Source = new Uri("http://localhost:5173");
         } catch (Exception ex) {

@@ -11,6 +11,10 @@ for /f "tokens=5" %%a in ('netstat -aon ^| findstr :5173 ^| findstr LISTENING') 
 :: Also kill node/vite processes just in case
 taskkill /f /im node.exe /t >nul 2>&1
 
+:: Kill 00Hub Launcher processes
+echo [+] Closing 00Hub Launcher...
+taskkill /f /im 00Hub.exe >nul 2>&1
+
 echo.
 echo [x] Hub Server has been stopped safely.
 timeout /t 2 >nul

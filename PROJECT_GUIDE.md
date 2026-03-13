@@ -10,9 +10,9 @@
 
 | 파일 | 역할 |
 | --- | --- |
-| **[Hub.exe](file:///c:/Users/MY_NOTE/Desktop/2026%20WORKROOM/PRL%20Workspace/00_Hub/Hub.exe)** | **메인 실행기.** 이걸 더블 클릭하면 서버가 몰래 켜지고 앱 창이 뜹니다. |
-| **[run_hub.bat](file:///c:/Users/MY_NOTE/Desktop/2026%20WORKROOM/PRL%20Workspace/00_Hub/run_hub.bat)** | Hub.exe의 이전 버전. 배치 파일(bat) 방식의 실행기입니다. |
-| [Hub.exe](file:///c:/Users/MY_NOTE/Desktop/2026%20WORKROOM/PRL%20Workspace/00_Hub/Hub.exe) | 00Hub 통합 실행 파일 (C# WebView2 기반) |
+| **[00Hub.exe](file:///c:/Users/MY_NOTE/Desktop/2026%20WORKROOM/PRL%20Workspace/00_Hub/00Hub.exe)** | **메인 실행기.** 이걸 더블 클릭하면 서버가 몰래 켜지고 앱 창이 뜹니다. |
+| **[run_hub.bat](file:///c:/Users/MY_NOTE/Desktop/2026%20WORKROOM/PRL%20Workspace/00_Hub/run_hub.bat)** | 00Hub.exe의 이전 버전. 배치 파일(bat) 방식의 실행기입니다. |
+| [00Hub.exe](file:///c:/Users/MY_NOTE/Desktop/2026%20WORKROOM/PRL%20Workspace/00_Hub/00Hub.exe) | 00Hub 통합 실행 파일 (C# WebView2 기반) |
 | [Microsoft.Web.WebView2.Core.dll](./Microsoft.Web.WebView2.Core.dll) | WebView2 엔진 핵심 라이브러리 |
 | [Microsoft.Web.WebView2.WinForms.dll](./Microsoft.Web.WebView2.WinForms.dll) | WebView2 윈도우 폼 컨트롤 라이브러리 |
 | [WebView2Loader.dll](./WebView2Loader.dll) | WebView2 로더 모듈 |
@@ -88,14 +88,14 @@
 
 ### 🎯 [launcher_src/](file:///c:/Users/MY_NOTE/Desktop/2026%20WORKROOM/PRL%20Workspace/00_Hub/launcher_src) — 런처 소스 및 도구
 
-`Hub.exe`를 만들고 유지하는 데 필요한 재료들 모음입니다.
+`00Hub.exe`를 만들고 유지하는 데 필요한 재료들 모음입니다.
 
 | 파일 | 역할 |
 | --- | --- |
-| **[Launcher.cs](file:///c:/Users/MY_NOTE/Desktop/2026%20WORKROOM/PRL%20Workspace/00_Hub/launcher_src/Launcher.cs)** | Hub.exe의 원본 소스 코드(C#). 서버를 백그라운드에서 실행하고 앱 전용창을 띄우는 로직이 담겨 있습니다. |
+| **[Launcher.cs](file:///c:/Users/MY_NOTE/Desktop/2026%20WORKROOM/PRL%20Workspace/00_Hub/launcher_src/Launcher.cs)** | 00Hub.exe의 원본 소스 코드(C#). 서버를 백그라운드에서 실행하고 앱 전용창을 띄우는 로직이 담겨 있습니다. |
 | **[MakeIcon.cs](file:///c:/Users/MY_NOTE/Desktop/2026%20WORKROOM/PRL%20Workspace/00_Hub/launcher_src/MakeIcon.cs)** | 아이콘 제작기 소스 코드(C#). PNG를 윈도우용 .ico 파일로 직접 변환합니다. |
 | **MakeIcon.exe** | MakeIcon.cs를 컴파일한 실행 파일. 나중에 아이콘을 바꾸고 싶을 때 사용합니다. |
-| **00Hub.ico** | MakeIcon.exe가 만들어낸 결과물. Hub.exe 안에 이미 내장되어 있습니다. |
+| **00Hub.ico** | MakeIcon.exe가 만들어낸 결과물. 00Hub.exe 안에 이미 내장되어 있습니다. |
 
 ---
 
@@ -125,7 +125,7 @@ Git이 모든 커밋 기록과 변경 이력을 저장하는 숨겨진 폴더입
 ## ⚡ 작동 원리 요약
 
 ```text
-평행 님이 Hub.exe 실행
+평행 님이 00Hub.exe 실행
   → 백그라운드에서 npm run dev (Node.js 서버) 실행
   → 3초 대기 후 Chrome 앱 모드로 localhost:5173 오픈
   → React 앱(src/)이 브라우저에 렌더링
