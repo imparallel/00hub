@@ -26,7 +26,7 @@ class Launcher : Form {
     }
 
     public Launcher() {
-        this.Text = "00Hub";
+        this.Text = "00Hub.";
         this.Size = new Size(1280, 800);
         this.StartPosition = FormStartPosition.CenterScreen;
         this.Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
@@ -61,6 +61,19 @@ class Launcher : Form {
             await webView.EnsureCoreWebView2Async(null);
             webView.CoreWebView2.Settings.AreDefaultContextMenusEnabled = false; // 깔끔한 UI를 위해 우클릭 메뉴 비활성화
             
+            // 전체화면 요청 처리 이벤트 추가
+            webView.CoreWebView2.ContainsFullScreenElementChanged += (sender, args) => {
+                if (webView.CoreWebView2.ContainsFullScreenElement) {
+                    // 전체화면 진입
+                    this.FormBorderStyle = FormBorderStyle.None;
+                    this.WindowState = FormWindowState.Maximized;
+                } else {
+                    // 전체화면 탈출
+                    this.FormBorderStyle = FormBorderStyle.Sizable;
+                    this.WindowState = FormWindowState.Normal;
+                }
+            };
+
             // Wait a bit for server to be ready
             Thread.Sleep(2000);
             webView.Source = new Uri("http://localhost:5173");

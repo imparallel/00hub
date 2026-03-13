@@ -233,13 +233,17 @@ function App() {
   // Stop noise and handle Zen Timer when exiting zen mode
   useEffect(() => {
     if (!isZenMode) {
-      // 젠 탈출: 소음 끄기
+      // 젠 탈출: 전체화면 해제 시도
+      if (document.fullscreenElement) {
+        document.exitFullscreen().catch(() => {});
+      }
+      // 소음 끄기
       if (isNoiseOn) {
         noiseRef.current?.source.stop()
         noiseRef.current = null
         setIsNoiseOn(false)
       }
-      // 젠 타이머만 메인 타이머에 합산 (상시 주의: 이미 없어진 시간은 DWT를 일시정지한 듙안츜 가지 않았으므로 주복 없음)
+      // 젠 타이머만 메인 타이머에 합산
       if (zenFocusTimeSeconds > 0) {
         setFocusTimeSeconds(s => s + zenFocusTimeSeconds)
         setZenFocusTimeSeconds(0)
@@ -251,7 +255,11 @@ function App() {
         wasDwtRunning.current = false
       }
     } else {
-      // 젠 진입: DWT가 켜져 있으면 일시정지 후 ref에 기록
+      // 젠 진입: 전체화면 요청
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      }
+      // DWT가 켜져 있으면 일시정지 후 ref에 기록
       if (isFocusTimerRunning) {
         wasDwtRunning.current = true
         setIsFocusTimerRunning(false)
@@ -271,6 +279,17 @@ function App() {
       setIsZenTimerRunning(true)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isZenMode])
+
+  // Sync isZenMode if user exits fullscreen manually (e.g. Esc key)
+  useEffect(() => {
+    const handleFsChange = () => {
+      if (!document.fullscreenElement && isZenMode) {
+        setIsZenMode(false)
+      }
+    }
+    document.addEventListener('fullscreenchange', handleFsChange)
+    return () => document.removeEventListener('fullscreenchange', handleFsChange)
   }, [isZenMode])
 
   // ── Helpers ─────────────────────────────────────────────────────────────────
