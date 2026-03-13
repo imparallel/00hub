@@ -1,16 +1,41 @@
-# React + Vite
+# 00Hub — Personal Productivity Command Center
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+> ADHD 친화적 설계의 개인 생산성 대시보드. 하루의 시작부터 끝까지 단 하나의 창에서.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## 주요 기능
 
-## React Compiler
+- **The One Thing** — 오늘의 가장 중요한 목표를 화면 전체로
+- **Discipline Map** — 30일 성취도를 CMYK 색상 레이어로 시각화하는 히트맵
+- **Action Items** — 3단계 상태(TODO/DOING/DONE) + 서브퀘스트 + 드래그 앤 드롭
+- **Daily Quests** — 자정 자동 리셋되는 반복 습관 체크리스트
+- **Deep Work Timer** — 오늘의 집중 시간 측정 (목표 3시간)
+- **Brain Dump** — 머릿속을 비우는 자유 메모장
+- **Zen Mode** — 시계 클릭 한 번으로 진입하는 완전 집중 화면 + 백색소음
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## 실행 방법
 
-## Expanding the ESLint configuration
+```text
+Hub.exe 더블 클릭 → 앱 모드 창 자동 오픈
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+종료: `stop_hub.bat` 실행
+
+## 기술 스택
+
+React 18 · Vite · PWA (vite-plugin-pwa) · Web Audio API · C# 런처
+
+---
+
+## 문서
+
+| 문서 | 설명 |
+| --- | --- |
+| [ABOUT.md](./ABOUT.md) | 앱 전체 기능 소개 및 개발 여정 |
+| [PROJECT_GUIDE.md](./PROJECT_GUIDE.md) | 폴더 및 파일 구조 가이드 |
+| [CODE_REFERENCE.md](./CODE_REFERENCE.md) | 코드별 상세 설명 (유지보수용) |
+
+---
+
+Built by Parallel Lee × Antigravity — 2026.03
