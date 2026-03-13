@@ -412,58 +412,47 @@ taskkill /f /im node.exe /t
 
 ## 7. launcher_src/Launcher 런처 코드
 
-### 전체 흐름
+### 전체 흐름 (WebView2 통합 버전)
 
 ```text
-Main()
+Main() (STAThread)
   ├── SetCurrentProcessExplicitAppUserModelID()  — 작업 표시줄 그룹 ID 설정
-  ├── KillPort(5173)                             — 이전에 실행 중이던 서버 정리
-  ├── Process.Start(npm run dev, 창 숨김)         — 개발 서버 백그라운드 실행
-  ├── Thread.Sleep(3000)                         — 서버 준비 대기
-  └── LaunchBrowser("http://localhost:5173")     — 앱 창 열기
+  ├── Application.Run(new Launcher())            — 메인 윈도우(Form) 실행
+       ├── KillPort(5173)                        — 포트 정리
+       ├── StartServer()                         — npm run dev 백그라운드 실행
+       └── InitializeWebView()                   — 창 내부에 WebView2(Edge 엔진) 삽입
+            └── Source = localhost:5173          — 웹앱 주소 로드
 ```
 
 ### 중요 코드 분석
 
 #### 1) 작업 표시줄 그룹 설정
 
-```csharp
-[DllImport("shell32.dll")]
-static extern int SetCurrentProcessExplicitAppUserModelID(string AppID);
+이 코드는 여전히 유지되어, `Hub.exe`라는 하나의 아이콘으로 모든 프로세스를 묶어줍니다.
 
-SetCurrentProcessExplicitAppUserModelID("PyeongHaeng.00Hub.Launcher");
-```
+#### 2) WebView2 브라우저 삽입
 
-> **이 줄이 없으면 "00Hub (2)" 문제가 발생합니다.**
-> 윈도우는 기본적으로 실행 파일 경로로 그룹을 짓는데, 이 AppID를 지정하면 브라우저 창과 런처가 **같은 그룹**으로 묶입니다.
-
-#### 2) 서버 숨겨서 실행
+기존에는 외부 Chrome을 호출했지만, 이제는 `Microsoft.Web.WebView2.WinForms`를 사용하여 **런처 창 자체가 브라우저**가 됩니다.
 
 ```csharp
-ProcessStartInfo serverInfo = new ProcessStartInfo {
-    FileName = "cmd.exe",
-    Arguments = "/c npm run dev",
-    WindowStyle = ProcessWindowStyle.Hidden,  // 창 숨김
-    CreateNoWindow = true,                    // 새 창 생성 안 함
-    UseShellExecute = false
-};
+webView = new WebView2();
+webView.Dock = DockStyle.Fill;
+this.Controls.Add(webView);
+await webView.EnsureCoreWebView2Async(null);
+webView.Source = new Uri("http://localhost:5173");
 ```
 
-#### 3) 브라우저 앱 모드로 열기 (우선순위: Chrome → Edge → 기본 브라우저)
+#### 3) 자동 종료 (OnFormClosing)
 
-```csharp
-static void LaunchBrowser(string url) {
-    try {
-        Process.Start(new ProcessStartInfo {
-            FileName = "chrome.exe",
-            Arguments = $"--app=\"{url}\""    // --app 플래그가 앱 모드 핵심
-        });
-    } catch {
-        try { Process.Start("msedge.exe", $"--app=\"{url}\""); }
-        catch { Process.Start(url); }  // 최후 수단: 기본 브라우저
-    }
-}
-```
+창을 닫으면 백그라운드에서 돌아가는 `npm run dev` 서버도 함께 종료되도록 `taskkill /f /t` 옵션을 사용합니다. `/t`는 자식 프로세스 트리 전체를 찾아 죽입니다.
+
+#### 4) 정적 라이브러리 의존성
+
+실행을 위해 `Hub.exe`와 같은 폴더에 다음 DLL들이 반드시 함께 있어야 합니다:
+
+- `Microsoft.Web.WebView2.Core.dll`
+- `Microsoft.Web.WebView2.WinForms.dll`
+- `WebView2Loader.dll`
 
 ---
 

@@ -5,20 +5,43 @@ using System.IO;
 using System.Net.NetworkInformation;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Windows.Forms;
+using System.Drawing;
+using Microsoft.Web.WebView2.WinForms;
+using Microsoft.Web.WebView2.Core;
 
-class Launcher {
+class Launcher : Form {
     [DllImport("shell32.dll", SetLastError = true)]
     static extern int SetCurrentProcessExplicitAppUserModelID([MarshalAs(UnmanagedType.LPWStr)] string AppID);
 
+    private WebView2 webView;
+    private Process serverProcess;
+
+    [STAThread]
     static void Main() {
         SetCurrentProcessExplicitAppUserModelID("PyeongHaeng.00Hub.Launcher");
-        string appPath = AppDomain.CurrentDomain.BaseDirectory;
-        Directory.SetCurrentDirectory(appPath);
+        Application.EnableVisualStyles();
+        Application.SetCompatibleTextRenderingDefault(false);
+        Application.Run(new Launcher());
+    }
+
+    public Launcher() {
+        this.Text = "00Hub";
+        this.Size = new Size(1280, 800);
+        this.StartPosition = FormStartPosition.CenterScreen;
+        this.Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
 
         // 1. Kill existing port 5173 if busy
         KillPort(5173);
 
         // 2. Start npm run dev hidden
+        StartServer();
+
+        // 3. Initialize WebView2
+        InitializeWebView();
+    }
+
+    private void StartServer() {
         ProcessStartInfo serverInfo = new ProcessStartInfo {
             FileName = "cmd.exe",
             Arguments = "/c npm run dev",
@@ -26,13 +49,43 @@ class Launcher {
             CreateNoWindow = true,
             UseShellExecute = false
         };
-        Process.Start(serverInfo);
+        serverProcess = Process.Start(serverInfo);
+    }
 
-        // 3. Wait for server
-        Thread.Sleep(3000);
+    private async void InitializeWebView() {
+        webView = new WebView2();
+        webView.Dock = DockStyle.Fill;
+        this.Controls.Add(webView);
 
-        // 4. Launch browser in App Mode
-        LaunchBrowser("http://localhost:5173");
+        try {
+            await webView.EnsureCoreWebView2Async(null);
+            webView.CoreWebView2.Settings.AreDefaultContextMenusEnabled = false; // 깔끔한 UI를 위해 우클릭 메뉴 비활성화
+            
+            // Wait a bit for server to be ready
+            Thread.Sleep(2000);
+            webView.Source = new Uri("http://localhost:5173");
+        } catch (Exception ex) {
+            MessageBox.Show("WebView2 초기화 실패: " + ex.Message);
+        }
+    }
+
+    protected override void OnFormClosing(FormClosingEventArgs e) {
+        // Close server process tree when window is closed
+        if (serverProcess != null && !serverProcess.HasExited) {
+            KillProcessAndChildren(serverProcess.Id);
+        }
+        base.OnFormClosing(e);
+    }
+
+    private void KillProcessAndChildren(int pid) {
+        try {
+            Process.Start(new ProcessStartInfo {
+                FileName = "taskkill.exe",
+                Arguments = string.Format("/f /t /pid {0}", pid),
+                WindowStyle = ProcessWindowStyle.Hidden,
+                CreateNoWindow = true
+            }).WaitForExit();
+        } catch {}
     }
 
     static void KillPort(int port) {
@@ -61,28 +114,5 @@ class Launcher {
                 }
             }
         } catch {}
-    }
-
-    static void LaunchBrowser(string url) {
-        try {
-            // Try Chrome
-            Process.Start(new ProcessStartInfo {
-                FileName = "chrome.exe",
-                Arguments = string.Format("--app=\"{0}\"", url),
-                UseShellExecute = true
-            });
-        } catch {
-            try {
-                // Try Edge
-                Process.Start(new ProcessStartInfo {
-                    FileName = "msedge.exe",
-                    Arguments = string.Format("--app=\"{0}\"", url),
-                    UseShellExecute = true
-                });
-            } catch {
-                // Default browser
-                Process.Start(url);
-            }
-        }
     }
 }

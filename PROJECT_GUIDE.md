@@ -12,15 +12,22 @@
 | --- | --- |
 | **[Hub.exe](file:///c:/Users/MY_NOTE/Desktop/2026%20WORKROOM/PRL%20Workspace/00_Hub/Hub.exe)** | **메인 실행기.** 이걸 더블 클릭하면 서버가 몰래 켜지고 앱 창이 뜹니다. |
 | **[run_hub.bat](file:///c:/Users/MY_NOTE/Desktop/2026%20WORKROOM/PRL%20Workspace/00_Hub/run_hub.bat)** | Hub.exe의 이전 버전. 배치 파일(bat) 방식의 실행기입니다. |
-| **[stop_hub.bat](file:///c:/Users/MY_NOTE/Desktop/2026%20WORKROOM/PRL%20Workspace/00_Hub/stop_hub.bat)** | **종료기.** 백그라운드에서 돌고 있는 서버(node.exe)를 강제 종료합니다. |
-| **[index.html](file:///c:/Users/MY_NOTE/Desktop/2026%20WORKROOM/PRL%20Workspace/00_Hub/index.html)** | 웹 앱의 뼈대가 되는 HTML 파일. 리액트 앱이 이 파일 안의 `<div id="root">`에 올라탑니다. |
-| **[vite.config.js](file:///c:/Users/MY_NOTE/Desktop/2026%20WORKROOM/PRL%20Workspace/00_Hub/vite.config.js)** | 빌드 엔진(Vite)의 설정 파일. PWA 이름/색상/아이콘 설정과 개발 서버 포트(5173)가 정의되어 있습니다. |
-| **[eslint.config.js](file:///c:/Users/MY_NOTE/Desktop/2026%20WORKROOM/PRL%20Workspace/00_Hub/eslint.config.js)** | 코드 품질 검사기 설정. 오타나 잘못된 코드 패턴을 미리 잡아줍니다. |
-| **[package.json](file:///c:/Users/MY_NOTE/Desktop/2026%20WORKROOM/PRL%20Workspace/00_Hub/package.json)** | 프로젝트의 '이력서'. 앱 이름, 버전, 사용하는 외부 도구 목록이 적혀 있습니다. |
-| **package-lock.json** | 외부 도구들의 '정확한 버전'을 고정시켜두는 잠금 파일. 건드릴 필요 없습니다. |
-| **[README.md](file:///c:/Users/MY_NOTE/Desktop/2026%20WORKROOM/PRL%20Workspace/00_Hub/README.md)** | Vite가 프로젝트 생성 시 자동으로 만들어준 기본 안내서. |
-| **.gitignore** | Git에 올리지 말아야 할 파일 목록(예: `node_modules/`, 비밀 키 등)을 지정합니다. |
-| **[PROJECT_GUIDE.md](file:///c:/Users/MY_NOTE/Desktop/2026%20WORKROOM/PRL%20Workspace/00_Hub/PROJECT_GUIDE.md)** | 지금 평행 님이 보고 계신 이 문서입니다. 😊 |
+| [Hub.exe](file:///c:/Users/MY_NOTE/Desktop/2026%20WORKROOM/PRL%20Workspace/00_Hub/Hub.exe) | 00Hub 통합 실행 파일 (C# WebView2 기반) |
+| [Microsoft.Web.WebView2.Core.dll](./Microsoft.Web.WebView2.Core.dll) | WebView2 엔진 핵심 라이브러리 |
+| [Microsoft.Web.WebView2.WinForms.dll](./Microsoft.Web.WebView2.WinForms.dll) | WebView2 윈도우 폼 컨트롤 라이브러리 |
+| [WebView2Loader.dll](./WebView2Loader.dll) | WebView2 로더 모듈 |
+| [run_hub.bat](file:///c:/Users/MY_NOTE/Desktop/2026%20WORKROOM/PRL%20Workspace/00_Hub/run_hub.bat) | 런처 대신 배치 파일로 실행하고 싶을 때 사용 |
+| [stop_hub.bat](file:///c:/Users/MY_NOTE/Desktop/2026%20WORKROOM/PRL%20Workspace/00_Hub/stop_hub.bat) | 종료기. 백그라운드 서버와 런처 관련 프로세스를 강제 종료합니다. |
+| [index.html](file:///c:/Users/MY_NOTE/Desktop/2026%20WORKROOM/PRL%20Workspace/00_Hub/index.html) | 웹 앱의 뼈대가 되는 HTML 파일. |
+| [vite.config.js](file:///c:/Users/MY_NOTE/Desktop/2026%20WORKROOM/PRL%20Workspace/00_Hub/vite.config.js) | 빌드 엔진(Vite)의 설정 파일. |
+| [eslint.config.js](file:///c:/Users/MY_NOTE/Desktop/2026%20WORKROOM/PRL%20Workspace/00_Hub/eslint.config.js) | 코드 품질 검사기 설정. |
+| [package.json](file:///c:/Users/MY_NOTE/Desktop/2026%20WORKROOM/PRL%20Workspace/00_Hub/package.json) | 프로젝트의 '이력서'. |
+| package-lock.json | 외부 도구 잠금 파일. |
+| [README.md](file:///c:/Users/MY_NOTE/Desktop/2026%20WORKROOM/PRL%20Workspace/00_Hub/README.md) | 프로젝트 메인 소개 문서. |
+| .gitignore | Git 제외 목록. |
+| [PROJECT_GUIDE.md](file:///c:/Users/MY_NOTE/Desktop/2026%20WORKROOM/PRL%20Workspace/00_Hub/PROJECT_GUIDE.md) | 현재 보고 계신 이 가이드. |
+| [ABOUT.md](file:///c:/Users/MY_NOTE/Desktop/2026%20WORKROOM/PRL%20Workspace/00_Hub/ABOUT.md) | 앱 디자인 및 기능 상세 소개. |
+| [CODE_REFERENCE.md](file:///c:/Users/MY_NOTE/Desktop/2026%20WORKROOM/PRL%20Workspace/00_Hub/CODE_REFERENCE.md) | 코드별 상세 설명 레퍼런스. |
 
 ---
 
