@@ -22,3 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# WebView2
+*.WebView2/
+launcher_src/webview2.zip
+launcher_src/webview2_pkg/
