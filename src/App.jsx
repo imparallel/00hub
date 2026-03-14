@@ -104,7 +104,29 @@ function App() {
   // Heatmap: { dateString: ratio (0~1) }
   const [heatmap, setHeatmap] = useState(() => {
     const saved = localStorage.getItem('hub-heatmap-v2')
-    return saved ? JSON.parse(saved) : {}
+    let data = saved ? JSON.parse(saved) : {}
+    
+    // [Migration] 3h -> 4h Goal Scaling (One-time)
+    const migrationFlag = 'hub-goal-migrated-v4h'
+    if (!localStorage.getItem(migrationFlag)) {
+      const migrated = {}
+      Object.keys(data).forEach(date => {
+        const entry = data[date]
+        if (typeof entry === 'object') {
+          const newT = entry.t * 0.75
+          const newTotal = (entry.q + entry.a + newT) / 3
+          migrated[date] = { ...entry, t: newT, total: newTotal }
+        } else {
+          migrated[date] = entry * 0.75
+        }
+      })
+      data = migrated
+      localStorage.setItem('hub-heatmap-v2', JSON.stringify(data))
+      localStorage.setItem(migrationFlag, 'true')
+      console.log('[System] Goal migration (3h->4h) completed: Past data scaled by 0.75.')
+    }
+    
+    return data
   })
   const [heatmapTooltip, setHeatmapTooltip] = useState(null)
 
@@ -209,7 +231,7 @@ function App() {
   }
 
   // ── Real-time heatmap for today (Multi-layered CMYK) ───────────────────────
-  const todayString = new Date().toDateString()
+  const todayString = currentTime.toDateString()
 
   // 1. Quests completion ratio (Magenta) - Only count those completed TODAY
   const completedQuests = quests.filter(q => q.completed && q.completedAt === todayString).length
@@ -232,8 +254,8 @@ function App() {
   }
   const todosRatio = todos.length > 0 ? totalActionScore / todos.length : 0
 
-  // 3. Focus Timer ratio (Cyan) - Target: 3 hours = 10800 seconds
-  const targetFocusSeconds = 10800
+  // 3. Focus Timer ratio (Cyan) - Target: 4 hours = 14400 seconds (Updated from 3h)
+  const targetFocusSeconds = 14400
   const totalFocusSeconds = focusTimeSeconds + zenFocusTimeSeconds
   const focusRatio = Math.min(totalFocusSeconds / targetFocusSeconds, 1)
 
@@ -258,17 +280,23 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [quests, todos, totalFocusSeconds])
 
-  // ── Daily reset ─────────────────────────────────────────────────────────────
+  // ── Daily reset (Real-time) ────────────────────────────────────────────────
   useEffect(() => {
-    const today = new Date().toDateString()
+    const today = currentTime.toDateString()
     if (today !== lastResetDate) {
+      // 1. Daily Quests 리셋
       setQuests(q => q.map(quest => ({ ...quest, completed: false, completedAt: null })))
+      
+      // 2. 집중 타이머 리셋 (0초부터 다시 시작)
       setFocusTimeSeconds(0)
-      //setOneThing('') //Today's one thing reset
+      setZenFocusTimeSeconds(0)
+      
+      // 3. 리셋 날짜 업데이트
       setLastResetDate(today)
+      
+      console.log(`[System] Daily reset completed for ${today}`)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [currentTime, lastResetDate])
 
   // ── Live Clock ──────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -690,22 +718,47 @@ function App() {
             const pctA = Math.round(data.a * 100)
             const pctT = Math.round(data.t * 100)
 
+            // Dynamic Layering Logic: Sort by percentage to determine z-index (higher pct = lower z-index)
+            const priority = { a: 1, q: 2, t: 3 }; // Yellow(a) is back(1), Magenta(q) mid(2), Cyan(t) is front(3)
+            const stats = [
+              { key: 'q', val: pctQ },
+              { key: 'a', val: pctA },
+              { key: 't', val: pctT }
+            ].sort((a, b) => {
+              if (b.val !== a.val) return b.val - a.val; // Higher value goes back
+              return priority[a.key] - priority[b.key]; // Tie-break: C -> Y -> M
+            });
+
+            // Mapping for dynamic z-index and wave height
+            const layerProps = {};
+            const waveHByRank = ['8px', '6px', '4px']; 
+            stats.forEach((stat, idx) => {
+              layerProps[stat.key] = {
+                zIndex: idx + 1,
+                waveHeight: waveHByRank[idx]
+              };
+            });
+
+            const minPct = Math.min(pctQ, pctA, pctT);
+
             return (
               <div
                 key={i}
                 className={`heatmap-cell layered ${isToday ? 'today' : ''}`}
                 style={{
-                  '--pct-q': `${pctQ}%`,
-                  '--pct-a': `${pctA}%`,
-                  '--pct-t': `${pctT}%`,
-                  '--pct-total': `${pctTotal}%`
+                  '--pct-q': pctQ,
+                  '--pct-a': pctA,
+                  '--pct-t': pctT,
+                  '--pct-w': minPct,
+                  '--pct-total': pctTotal
                 }}
                 onMouseEnter={() => setHeatmapTooltip({ label, pct: pctTotal, q: pctQ, a: pctA, t: pctT })}
                 onMouseLeave={() => setHeatmapTooltip(null)}
               >
-                <div className="layer-y" title="Action Items" />
-                <div className="layer-m" title="Daily Quests" />
-                <div className="layer-c" title="Deep Work Timer" />
+                <div className="layer-y" title="Action Items" style={{ zIndex: layerProps.a.zIndex, '--wave-h': layerProps.a.waveHeight }} />
+                <div className="layer-m" title="Daily Quests" style={{ zIndex: layerProps.q.zIndex, '--wave-h': layerProps.q.waveHeight }} />
+                <div className="layer-c" title="Work Timer" style={{ zIndex: layerProps.t.zIndex, '--wave-h': layerProps.t.waveHeight }} />
+                {minPct > 0 && <div className="layer-w" style={{ zIndex: 10, '--wave-h': '4px' }} />}
               </div>
             )
           })}
@@ -897,7 +950,7 @@ function App() {
         <div className="sidebar-stack">
           {/* FOCUS TIMER */}
           <section className="card timer-card">
-            <h2 className="card-title">Deep Work Timer</h2>
+            <h2 className="card-title">Work Timer</h2>
             <div className="timer-display">{formatFocus(focusTimeSeconds)}</div>
             <div className="timer-controls">
               <button

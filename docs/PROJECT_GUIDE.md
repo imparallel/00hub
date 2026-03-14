@@ -37,7 +37,7 @@
 
 | 파일 | 역할 |
 | --- | --- |
-| **[App.jsx](file:///c:/Users/MY_NOTE/Desktop/2026%20WORKROOM/PRL%20Workspace/00_Hub/src/App.jsx)** | **허브의 뇌.** 할 일 추가, 퀘스트 체크, 집중 타이머, 히트맵 계산, 젠 모드, 백색소음 등 모든 로직이 담겨 있습니다. |
+| **[App.jsx](file:///c:/Users/MY_NOTE/Desktop/2026%20WORKROOM/PRL%20Workspace/00_Hub/src/App.jsx)** | **허브의 뇌.** 할 일 추가, 퀘스트 체크, 워크 타이머, 히트맵 계산, 젠 모드, 백색소음 등 모든 로직이 담겨 있습니다. |
 | **[App.css](file:///c:/Users/MY_NOTE/Desktop/2026%20WORKROOM/PRL%20Workspace/00_Hub/src/App.css)** | **허브의 세부 디자인.** 카드 배치, 유리 효과(Glassmorphism), 버튼 호버 효과 등이 정의되어 있습니다. |
 | **[index.css](file:///c:/Users/MY_NOTE/Desktop/2026%20WORKROOM/PRL%20Workspace/00_Hub/src/index.css)** | **공통 테마.** CMYK 컬러 팔레트 정의, 스크롤바 숨김 처리 등 앱 전체에 적용되는 기본 규칙입니다. |
 | **[main.jsx](file:///c:/Users/MY_NOTE/Desktop/2026%20WORKROOM/PRL%20Workspace/00_Hub/src/main.jsx)** | **앱의 시작점.** 리액트를 HTML에 연결하고 PWA 서비스 워커를 등록하는 3줄짜리 핵심 파일입니다. |
@@ -99,7 +99,7 @@
 
 ### 📂 [*.WebView2/](file:///c:/Users/MY_NOTE/Desktop/2026%20WORKROOM/PRL%20Workspace/00_Hub) — 브라우저 데이터 및 캐시
 
-`00Hub.exe.WebView2` 폴더는 앱의 실행 데이터(LocalStorage 포함), 쿠키, 브라우저 캐시 등이 저장되는 곳입니다. 런처와 웹뷰 엔진이 자동으로 생성하고 관리합니다. (백업 시 이 폴더를 직접 옮기기보다는 앱 내 **Export** 기능을 권장합니다.)
+`00Hub.exe.WebView2` 폴더는 앱의 실행 데이터, 쿠키, 브라우저 캐시 등이 저장되는 곳입니다. 런처와 웹뷰 엔진이 자동으로 생성하고 관리합니다. (백업 시 이 폴더를 직접 옮기기보다는 앱 내 **Export** 기능을 권장합니다.)
 
 ---
 
@@ -119,7 +119,7 @@ Git이 모든 커밋 기록과 변경 이력을 저장하는 숨겨진 폴더입
 
 ```text
 평행 님이 00Hub.exe 실행
-  → 백그라운드에서 npm run dev (Node.js 서버) 실행
+  → 백그라운드에서 npm run dev 서버 실행
   → 2초 대기 후 WebView2 창으로 localhost:5173 오픈
   → React 앱(src/)이 브라우저에 렌더링
   → 모든 데이터는 브라우저 LocalStorage에 저장

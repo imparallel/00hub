@@ -170,7 +170,7 @@ function createWhiteNoise(ctx) {
 | `heatmap` | Object | localStorage 또는 `{}` | 날짜별 성취도 데이터 `{dateString: {q,a,t,total}}` |
 | `heatmapTooltip` | Object/null | `null` | 마우스 호버 중인 히트맵 셀 정보 |
 | `currentTime` | Date | `new Date()` | 실시간 시계용 |
-| `focusTimeSeconds` | Number | localStorage 또는 `0` | Deep Work Timer 누적 초 |
+| `focusTimeSeconds` | Number | localStorage 또는 `0` | Work Timer 누적 초 |
 | `isFocusTimerRunning` | Boolean | `false` | 타이머 실행 중 여부 |
 | `brainDump` | String | localStorage 또는 `''` | Brain Dump 메모 내용 |
 | `oneThing` | String | localStorage 또는 `''` | "The One Thing" 입력 내용 |
@@ -228,8 +228,8 @@ const todosRatio = todos.length > 0 ? totalActionScore / todos.length : 0
 const completedQuestsToday = quests.filter(q => q.completed && q.completedAt === todayString).length
 const questsRatio = quests.length > 0 ? completedQuestsToday / quests.length : 0
 
-// 3. Focus 달성률 (Cyan) — 목표: 3시간(10800초)
-const targetFocusSeconds = 10800
+// 3. Focus 달성률 (Cyan) — 목표: 4시간(14400초)
+const targetFocusSeconds = 14400
 const focusRatio = Math.min((focusTimeSeconds + zenFocusTimeSeconds) / targetFocusSeconds, 1)
 
 // 종합 평균
@@ -255,19 +255,21 @@ useEffect(() => { localStorage.setItem('hub-oneThing',   JSON.stringify(oneThing
 
 > 의존성 배열의 값이 바뀔 때마다 자동 저장됩니다. 별도 저장 버튼이 없는 이유입니다.
 
-#### 자정 자동 리셋
+#### 자정 자동 리셋 (실시간 감지)
 
 ```jsx
 useEffect(() => {
-  const today = new Date().toDateString()
-  if (today !== lastResetDate) {        // 날짜가 바뀌었다면
+  const today = currentTime.toDateString()
+  if (today !== lastResetDate) {        // 날짜가 바뀌었다면 (실시간 감지)
     setQuests(q => q.map(quest => ({ ...quest, completed: false })))  // 퀘스트 초기화
-    setFocusTimeSeconds(0)              // 타이머 초기화
-    setOneThing('')                     // One Thing 초기화
+    setFocusTimeSeconds(0)              // 타이머 초기화 (0초부터 다시 시작)
+    setZenFocusTimeSeconds(0)
     setLastResetDate(today)
   }
-}, [])  // 앱이 처음 켜질 때 한 번만 실행
+}, [currentTime, lastResetDate])  // currentTime이 바뀔 때마다 체크
 ```
+
+> **실시간 동의성**: 기존에는 앱이 처음 켜질 때만 리셋을 체크했으나, 이제는 `currentTime` 상태와 연동되어 앱을 켜둔 채 자정을 넘겨도 즉시 리셋이 일어납니다. 타이머가 작동 중이라면 0초부터 끊기지 않고 다시 시작됩니다.
 
 #### Zen Mode & 런처 통신
 
@@ -406,17 +408,17 @@ App.css
 > `::before` 가상 요소를 카드 뒤에 깔아서 유리 효과를 만듭니다.
 > 실제 카드 내용과 분리되어 있어 성능과 레이아웃에 영향을 최소화합니다.
 
-### Heatmap 액체 레이어
+### Heatmap 칵테일 레이어
 
 ```css
-/* Yellow, Magenta, Cyan 세 레이어가 각각 다른 z-index로 쌓임 */
-.layer-y { height: var(--pct-a, 0%); background: rgba(254,218,0,0.6); z-index: 1; }
-.layer-m { height: var(--pct-q, 0%); background: rgba(255,0,102,0.6); z-index: 2; mix-blend-mode: screen; }
-.layer-c { height: var(--pct-t, 0%); background: rgba(0,176,255,0.7); z-index: 3; mix-blend-mode: screen; }
+/* 칵테일 정렬 로직: 더 많이 달성한 색상을 뒤로 배치 (Y -> M -> C 순) */
+.layer-y { z-index: var(--z-a); --wave-h: var(--h-a); } /* Yellow: 8px Wave (Back) */
+.layer-m { z-index: var(--z-q); --wave-h: var(--h-q); } /* Magenta: 6px Wave (Mid) */
+.layer-c { z-index: var(--z-t); --wave-h: var(--h-t); } /* Cyan: 4px Wave (Front) */
 ```
 
-> `mix-blend-mode: screen`은 빛의 혼합 방식입니다. 두 색이 겹치면 더 밝아집니다.
-> `--pct-a`, `--pct-q`, `--pct-t`는 JSX에서 `style={{ '--pct-a': '80%' }}` 방식으로 동적으로 주입됩니다.
+> **브랜드 컬러 우선순위**: 모든 수치가 동일할 경우 **Yellow (뒤) > Magenta (중간) > Cyan (앞)** 순으로 정렬됩니다. 수치가 다를 경우 달성률이 높은 색상이 뒤로 가며 높이도 자동으로 계단식(8/6/4px) 배분됩니다.
+> **실선 방지**: 각 레이어 파동 하단에 `margin-bottom: -1.2px` 오버랩을 적용하여 브라우저 렌더링 오차로 인한 틈새 비침을 해결했습니다.
 
 ---
 

@@ -302,32 +302,17 @@
   outline-offset: 1px;
 }
 
-/* Liquid Fill for Discipline Map */
-.heatmap-cell {
-  position: relative;
-  overflow: hidden;
-  background: rgba(0, 0, 0, 0.03);
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  border-radius: 4px;
-  transform: translateZ(0);
-  /* Fix for Safari border-radius clipping */
-}
-
+/* Multi-layered CMYK Liquid Fill for Discipline Map */
 /* Multi-layered CMYK Liquid Fill for Discipline Map */
 .heatmap-cell {
   position: relative;
-  overflow: hidden;
+  /* Allow vertical overflow for waves but clip strictly in layers */
+  overflow: visible;
   background: rgba(0, 0, 0, 0.03);
   border: 1px solid rgba(0, 0, 0, 0.1);
-  border-radius: 4px;
+  border-radius: 2px;
+  overflow: hidden; /* Prevent waves from breaking through the top */
   transform: translateZ(0);
-  /* Fix for Safari clipping */
-}
-
-/* Today cell gets a subtle glow to stand out */
-.heatmap-cell.today {
-  outline: 2px solid var(--cmyk-black);
-  outline-offset: 1px;
 }
 
 /* Base layering for the 3 CMYK stats */
@@ -338,66 +323,97 @@
   bottom: 0;
   left: 0;
   width: 100%;
-  transition: height 0.6s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s;
+  mix-blend-mode: normal; 
+  transition: height 0.6s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s, z-index 0.3s;
 }
 
-/* Add wave surface to all layers */
+/* Add wave surface to all layers - Fixed to Top of body */
 .heatmap-cell.layered .layer-y::after,
 .heatmap-cell.layered .layer-m::after,
 .heatmap-cell.layered .layer-c::after {
   content: '';
   position: absolute;
-  top: -4px;
-  /* Move wave to the top edge of the liquid */
+  bottom: 100%; /* Anchor to top of the layer body */
   left: 0;
   width: 200%;
-  height: 5px;
+  height: var(--wave-h, 4px); /* Dynamic wave height based on position */
   background-size: 50% 100%;
   animation: waveSlosh 2.5s linear infinite;
   pointer-events: none;
+  /* Optimization to fix shaking/jittering */
+  will-change: transform;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+  /* Fix: Add overlap to hide sub-pixel gaps (the "line" issue) */
+  margin-bottom: -1.2px;
 }
 
-/* 1. Yellow (Action Items) - Back layer */
+/* 1. Yellow (Action Items) - 100% is (Cell Height - 4px) */
 .heatmap-cell.layered .layer-y {
-  height: var(--pct-a, 0%);
-  background: rgba(254, 218, 0, 0.6);
-  z-index: 1;
+  /* Scale height so that 100% reaches cell-top minus 4px */
+  height: calc((var(--pct-a, 0) * 0.01 * (100% - 4px)));
+  background: #FFF080;
+  opacity: 1.0;
 }
 
 .heatmap-cell.layered .layer-y::after {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 20' preserveAspectRatio='none'%3E%3Cpath d='M0 10 Q 25 2, 50 10 T 100 10 L 100 20 L 0 20 Z' fill='rgba(254, 218, 0, 0.6)'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 20' preserveAspectRatio='none'%3E%3Cpath d='M0 10 Q 25 2, 50 10 T 100 10 L 100 20 L 0 20 Z' fill='%23FFF080'/%3E%3C/svg%3E");
   animation-duration: 3s;
-  /* slightly different speed */
 }
 
-/* 2. Magenta (Quests) - Middle layer */
+/* 2. Magenta (Quests) */
 .heatmap-cell.layered .layer-m {
-  height: var(--pct-q, 0%);
-  background: rgba(255, 0, 102, 0.6);
-  z-index: 2;
-  mix-blend-mode: screen;
-  /* Blends brightly like light */
+  height: calc((var(--pct-q, 0) * 0.01 * (100% - 4px)));
+  background: #FF99C0;
+  opacity: 1.0; /* Restored to full opaque */
 }
 
 .heatmap-cell.layered .layer-m::after {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 20' preserveAspectRatio='none'%3E%3Cpath d='M0 10 Q 25 2, 50 10 T 100 10 L 100 20 L 0 20 Z' fill='rgba(255, 0, 102, 0.6)'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 20' preserveAspectRatio='none'%3E%3Cpath d='M0 10 Q 25 2, 50 10 T 100 10 L 100 20 L 0 20 Z' fill='%23FF99C0'/%3E%3C/svg%3E");
   animation-duration: 2.2s;
   animation-direction: reverse;
-  /* slosh opposite way */
 }
 
-/* 3. Cyan (Timer) - Front layer */
+/* 3. Cyan (Timer) */
 .heatmap-cell.layered .layer-c {
-  height: var(--pct-t, 0%);
-  background: rgba(0, 176, 255, 0.7);
-  z-index: 3;
-  mix-blend-mode: screen;
-  /* Blends brightly like light */
+  height: calc((var(--pct-t, 0) * 0.01 * (100% - 4px)));
+  background: #80DBFF;
+  opacity: 1.0;
 }
 
 .heatmap-cell.layered .layer-c::after {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 20' preserveAspectRatio='none'%3E%3Cpath d='M0 10 Q 25 2, 50 10 T 100 10 L 100 20 L 0 20 Z' fill='rgba(0, 176, 255, 0.7)'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 20' preserveAspectRatio='none'%3E%3Cpath d='M0 10 Q 25 2, 50 10 T 100 10 L 100 20 L 0 20 Z' fill='%2380DBFF'/%3E%3C/svg%3E");
   animation-duration: 2.7s;
+}
+
+/* 4. White Wave Layer (Pure Opaque Point) - 2px Wave */
+.heatmap-cell.layered .layer-w {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: calc((var(--pct-w, 0) * 0.01 * (100% - 4px)) - 4px); /* Lowered 4px from the lowest point for deeper depth */
+  background: white; /* Restored: Body is white again */
+  opacity: 1.0; /* Back to full opaque */
+  pointer-events: none;
+  transition: height 0.6s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s;
+}
+
+.heatmap-cell.layered .layer-w::after {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  width: 200%;
+  height: 4px; /* Increased to 4px: Now you can see the wave valleys */
+  background-size: 50% 100%;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 20' preserveAspectRatio='none'%3E%3Cpath d='M0 10 Q 25 2, 50 10 T 100 10 L 100 20 L 0 20 Z' fill='white'/%3E%3C/svg%3E");
+  animation: waveSlosh 2s linear infinite;
+  margin-bottom: -1.2px; /* Uniform overlap for all layers */
+  /* Optimization to fix shaking/jittering */
+  will-change: transform;
+  backface-visibility: hidden;
+  transform: translateZ(0);
 }
 
 .heatmap-cell.layered:hover .layer-y,
@@ -408,11 +424,11 @@
 
 @keyframes waveSlosh {
   0% {
-    transform: translateX(0);
+    transform: translate3d(0, 0, 0);
   }
 
   100% {
-    transform: translateX(-50%);
+    transform: translate3d(-50%, 0, 0);
   }
 }
 

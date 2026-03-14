@@ -7,15 +7,15 @@
 ## 주요 기능
 
 - **The One Thing** — 오늘의 가장 중요한 목표를 화면 전체로
-- **Discipline Map** — 30일 성취도를 CMYK 색상 레이어로 시각화하는 히트맵
+- **Discipline Map** — 30일 성취도를 CMYK 색상 레이어로 시각화하는 칵테일 히트맵
 - **Action Items** — 3단계 상태(TODO/DOING/DONE) + 서브태스크 + 드래그 앤 드롭
 - **Premium Notifications** — 브라우저 기본창을 대체하는 커스텀 토스트 알림 및 글래스모피즘 확인 모달
 - **Daily Quests** — 자정 자동 리셋되는 반복 습관 체크리스트
-- **Deep Work Timer** — 오늘의 집중 시간 측정 (목표 3시간)
+- **Work Timer** — 오늘의 집중 시간 측정 (목표 4시간)
 - **Brain Dump** — 머릿속을 비우는 자유 메모장
 - **Zen Mode** — 시계 클릭 한 번으로 진입하는 완전 집중 화면 + 백색소음 + 상단 고정(TopMost)
 - **System Tray App** — 작업 표시줄 공간을 차지하지 않고 트레이 아이콘으로 상시 거주
-- **Overlay Control** — 상단 호버 시 나타나는 투명 바를 통해 간편하게 최소화 (Alt+Tab 완벽 지원)
+- **Overlay Control** — 상단 호버 시 나타나는 투명 바를 통해 간편하게 최소화 (Alt+Tab 지원)
 
 ## 실행 방법
 
