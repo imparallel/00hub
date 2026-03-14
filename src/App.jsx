@@ -237,18 +237,20 @@ function App() {
   const completedQuests = quests.filter(q => q.completed && q.completedAt === todayString).length
   const questsRatio = quests.length > 0 ? completedQuests / quests.length : 0
 
-  // 2. Action Items completion ratio (Yellow) - Only count progress made TODAY
+  // 2. Action Items (Yellow) - Raw counts and weighted ratio
+  let qa_main = 0
+  let qa_sub = 0
   let totalActionScore = 0
   if (todos.length > 0) {
     todos.forEach(t => {
-      // Rule 1: Only whole tasks finished TODAY get 1 point
       if (t.status === 'done' && t.completedAt === todayString) {
         totalActionScore += 1
+        qa_main += 1
       }
-      // Rule 2: Unfinished tasks (DOING) get partial credit for subtasks finished TODAY
       else if (t.status === 'doing' && t.subtasks?.length > 0) {
         const subCompletedToday = t.subtasks.filter(s => s.completed && s.completedAt === todayString).length
         totalActionScore += (subCompletedToday / t.subtasks.length) * 0.8
+        qa_sub += subCompletedToday
       }
     })
   }
@@ -262,16 +264,21 @@ function App() {
   // Combined score for the total (still used for info bar calculation)
   const todayRatio = (questsRatio + todosRatio + focusRatio) / 3
 
-  // Update today's layered ratios in heatmap
+  // Update today's layered data in heatmap (Raw data first)
   useEffect(() => {
     setHeatmap(prev => {
       const updated = {
         ...prev,
         [todayString]: {
-          q: questsRatio,   // Magenta
-          a: todosRatio,    // Yellow
-          t: focusRatio,    // Cyan
-          total: todayRatio // Overall
+          s: totalFocusSeconds,      // Focus seconds (Raw)
+          qq_done: completedQuests,  // Quest done count (Raw)
+          qq_total: quests.length,   // Quest total count (Raw)
+          qa_main: qa_main,          // Action main done count (Raw)
+          qa_sub: qa_sub,            // Action sub done count (Raw)
+          q: questsRatio,   // Calculated Magenta ratio for visual
+          a: todosRatio,    // Calculated Yellow ratio for visual
+          t: focusRatio,    // Calculated Cyan ratio for visual
+          total: todayRatio // Overall average
         }
       }
       localStorage.setItem('hub-heatmap-v2', JSON.stringify(updated))
@@ -716,7 +723,22 @@ function App() {
             const pctTotal = Math.round(data.total * 100)
             const pctQ = Math.round(data.q * 100)
             const pctA = Math.round(data.a * 100)
-            const pctT = Math.round(data.t * 100)
+            
+            // Focus ratio is re-calculated based on current targetFocusSeconds (4h by default)
+            const currentTSeconds = data.s !== undefined ? data.s : (data.t * 10800) // fallback for old data
+            const displayFocusRatio = Math.min(currentTSeconds / targetFocusSeconds, 1)
+            const pctT = Math.round(displayFocusRatio * 100)
+
+            // Dynamic Tooltip Data
+            const tooltipData = {
+              label,
+              pct: pctTotal,
+              q_done: data.qq_done !== undefined ? data.qq_done : 0,
+              q_total: data.qq_total !== undefined ? data.qq_total : 0,
+              a_main: data.qa_main !== undefined ? data.qa_main : 0,
+              a_sub: data.qa_sub !== undefined ? data.qa_sub : 0,
+              focusSeconds: currentTSeconds
+            }
 
             // Dynamic Layering Logic: Sort by percentage to determine z-index (higher pct = lower z-index)
             const priority = { a: 1, q: 2, t: 3 }; // Yellow(a) is back(1), Magenta(q) mid(2), Cyan(t) is front(3)
@@ -752,7 +774,7 @@ function App() {
                   '--pct-w': minPct,
                   '--pct-total': pctTotal
                 }}
-                onMouseEnter={() => setHeatmapTooltip({ label, pct: pctTotal, q: pctQ, a: pctA, t: pctT })}
+                onMouseEnter={() => setHeatmapTooltip(tooltipData)}
                 onMouseLeave={() => setHeatmapTooltip(null)}
               >
                 <div className="layer-y" title="Action Items" style={{ zIndex: layerProps.a.zIndex, '--wave-h': layerProps.a.waveHeight }} />
@@ -767,9 +789,15 @@ function App() {
         <div className="heatmap-info-bar">
           <strong>{heatmapTooltip ? heatmapTooltip.label : `오늘 (${new Date().toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', weekday: 'short' })})`}</strong>
           <div className="heatmap-info-stats" style={{ display: 'flex', gap: '12px', fontSize: '0.8rem' }}>
-            <span style={{ color: 'var(--cmyk-yellow)' }}>Acts {heatmapTooltip ? heatmapTooltip.a : Math.round(todosRatio * 100)}%</span>
-            <span style={{ color: 'var(--cmyk-magenta)' }}>Quests {heatmapTooltip ? heatmapTooltip.q : Math.round(questsRatio * 100)}%</span>
-            <span style={{ color: 'var(--cmyk-cyan)' }}>Focus {heatmapTooltip ? heatmapTooltip.t : Math.round(focusRatio * 100)}%</span>
+            <span style={{ color: 'var(--cmyk-yellow)' }}>
+              Acts {heatmapTooltip ? `(메인 ${heatmapTooltip.a_main}, 서브 ${heatmapTooltip.a_sub})` : `(메인 ${qa_main}, 서브 ${qa_sub})`}
+            </span>
+            <span style={{ color: 'var(--cmyk-magenta)' }}>
+              Quests {heatmapTooltip ? `(${heatmapTooltip.q_done}/${heatmapTooltip.q_total})` : `(${completedQuests}/${quests.length})`}
+            </span>
+            <span style={{ color: 'var(--cmyk-cyan)' }}>
+              Focus {heatmapTooltip ? `(${formatFocus(heatmapTooltip.focusSeconds)})` : `(${formatFocus(totalFocusSeconds)})`}
+            </span>
             <span style={{ fontWeight: 'bold' }}>Total {heatmapTooltip ? heatmapTooltip.pct : Math.round(todayRatio * 100)}%</span>
           </div>
         </div>
