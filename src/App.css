@@ -715,6 +715,162 @@
   font-weight: 600;
 }
 
+
+/* ── Custom Toast Notification ────────────────────────────────────────── */
+.toast-container {
+  position: fixed;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  z-index: 99999;
+  pointer-events: none;
+  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.toast-container.visible {
+  transform: translateX(-50%) translateY(0);
+}
+
+.toast-content {
+  background: rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+  padding: 1rem 2rem;
+  border-radius: 40px;
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  min-width: 320px;
+  justify-content: center;
+}
+
+.toast-icon {
+  font-size: 1.2rem;
+  color: var(--cmyk-magenta);
+}
+
+.toast-message {
+  font-weight: 700;
+  color: var(--cmyk-black);
+  letter-spacing: -0.5px;
+  font-size: 0.95rem;
+}
+
+@keyframes toastPulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.02); }
+  100% { transform: scale(1); }
+}
+
+.toast-container.visible .toast-content {
+  animation: toastPulse 2s infinite ease-in-out;
+}
+
+/* Subtask Drag & Drop Styles */
+.subtask-item.is-dragging {
+  background: rgba(255, 255, 255, 0.4) !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  border-radius: var(--border-radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  z-index: 1000;
+}
+
+.subtask-list {
+  min-height: 5px; /* Droppable area stability */
+}
+
+/* ── Custom Confirm Modal ───────────────────────────────────────────── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100000;
+  padding: 2rem;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.modal-content {
+  width: 100%;
+  max-width: 400px;
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(30px);
+  padding: 2.5rem;
+  text-align: center;
+  border-radius: var(--border-radius-lg);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+  transform: scale(0.9);
+  animation: modalPop 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes modalPop {
+  to { transform: scale(1); opacity: 1; }
+}
+
+.modal-title {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--cmyk-black);
+  margin-bottom: 0.8rem;
+  letter-spacing: -0.5px;
+}
+
+.modal-message {
+  font-size: 1rem;
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+  margin-bottom: 2rem;
+  white-space: pre-line; /* 줄바꿈 지원 */
+}
+
+.modal-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.btn-modal {
+  padding: 0.8rem 2rem;
+  border-radius: var(--border-radius-md);
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.95rem;
+  border: none;
+}
+
+.btn-cancel {
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--color-text-secondary);
+}
+
+.btn-cancel:hover {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.btn-confirm {
+  background: var(--cmyk-black);
+  color: white;
+}
+
+.btn-confirm:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 /* ????????????????????????????????????????????????????????????????????????????????????????????
    BUTTONS
 ???????????????????????????????????????????????????????????????????????????????????????????? */
@@ -738,8 +894,8 @@
   transform: scale(1.1);
 }
 
-/* Subquests under DOING */
-.subquests-container {
+/* Subtasks under DOING */
+.subtasks-container {
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
@@ -748,10 +904,9 @@
   border-top: 1px dashed rgba(0, 0, 0, 0.05);
   animation: fadeIn 0.2s ease-out;
   width: 100%;
-  /* ?봔?todo-body) ??됰퓠??뺤춸 쎛??몿???쇱젟 */
 }
 
-.subquest-item {
+.subtask-item {
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -761,22 +916,22 @@
   border-radius: 0;
 }
 
-.subquest-item input[type="checkbox"] {
+.subtask-item input[type="checkbox"] {
   accent-color: var(--cmyk-yellow);
   cursor: pointer;
 }
 
-.subquest-item span {
+.subtask-item span {
   flex: 1;
   color: var(--color-text-secondary);
 }
 
-.subquest-item span.completed {
+.subtask-item span.completed {
   text-decoration: line-through;
   color: var(--color-text-tertiary);
 }
 
-.btn-delete-subquest {
+.btn-delete-subtask {
   opacity: 0;
   color: var(--color-text-tertiary);
   font-size: 0.7rem;
@@ -784,15 +939,15 @@
   transition: var(--transition-fast);
 }
 
-.subquest-item:hover .btn-delete-subquest {
+.subtask-item:hover .btn-delete-subtask {
   opacity: 1;
 }
 
-.btn-delete-subquest:hover {
+.btn-delete-subtask:hover {
   color: var(--cmyk-magenta);
 }
 
-.subquest-input {
+.subtask-input {
   width: 100%;
   padding: 0.4rem 0.2rem;
   font-size: 0.8rem;
@@ -804,7 +959,7 @@
   transition: all 0.2s;
 }
 
-.subquest-input:focus {
+.subtask-input:focus {
   border-bottom-color: var(--cmyk-yellow);
 }
 
@@ -1549,4 +1704,59 @@
   color: rgba(0, 0, 0, 0.1);
   letter-spacing: 2px;
   text-transform: uppercase;
+  line-height: 1; /* MD032 해결용 */
+}
+
+/* ── Custom Toast Notification ────────────────────────────────────────── */
+.toast-container {
+  position: fixed;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  z-index: 99999;
+  pointer-events: none; /* 클릭 방해 금지 */
+  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.toast-container.visible {
+  transform: translateX(-50%) translateY(0);
+}
+
+.toast-content {
+  background: rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+  padding: 0.8rem 1.8rem;
+  border-radius: 40px;
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  min-width: 280px;
+  justify-content: center;
+  pointer-events: auto; /* 알림 자체는 상호작용 가능(필요시) */
+}
+
+.toast-icon {
+  font-size: 1.1rem;
+  color: var(--cmyk-magenta);
+}
+
+.toast-message {
+  font-weight: 700;
+  color: var(--cmyk-black);
+  letter-spacing: -0.5px;
+  font-size: 0.9rem;
+  white-space: pre-line; /* 줄바꿈 지원 */
+}
+
+@keyframes toastPulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.02); }
+  100% { transform: scale(1); }
+}
+
+.toast-container.visible .toast-content {
+  animation: toastPulse 2s infinite ease-in-out;
 }

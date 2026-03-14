@@ -179,27 +179,54 @@ function createWhiteNoise(ctx) {
 | `zenFocusTimeSeconds` | Number | `0` | 젠 모드 전용 타이머 초 |
 | `isZenTimerRunning` | Boolean | `false` | 젠 타이머 실행 중 여부 |
 | `isNoiseOn` | Boolean | `false` | 백색소음 ON/OFF |
+| `toast` | Object | `{visible:false, message:''}` | 커스텀 토스트 알림 상태 |
+| `confirmConfig` | Object | `{visible:false, ...}` | 커스텀 확인 모달 설정 및 콜백 |
+| `editingSubtaskId` | Number/null | `null` | 현재 수정 중인 서브태스크 ID |
+| `todayString` | String | - | `new Date().toDateString()` (계산용 기준 날짜) |
 
 ---
 
-### 3-4. Heatmap 비율 계산 (파생 계산)
+### 3-4. 항목 데이터 구조 (Item Data Structure)
+
+각 상태 변수(`todos`, `quests`) 내의 객체들은 다음과 같은 속성을 가집니다. `completed`와 `completedAt`은 변수가 아닌 객체의 **속성(Property)**입니다.
+
+| 항목 타입 | 속성명 | 타입 | 설명 |
+| --- | --- | --- | --- |
+| **Todo** | `id` | Number | 고유 식별자 |
+| | `text` | String | 할 일 내용 |
+| | `status` | String | `todo` / `doing` / `done` |
+| | `completedAt` | String | 완료된 날짜 (`toDateString()`) |
+| | `subtasks` | Array | 서브태스크 객체 배열 |
+| **Quest** | `id` | Number | 고유 식별자 |
+| | `text` | String | 퀘스트 내용 |
+| | `completed` | Boolean | 달성 여부 |
+| | `completedAt` | String | 달성된 날짜 (`toDateString()`) |
+| **Subtask** | `id` | Number | 고유 식별자 |
+| | `text` | String | 서브태스크 내용 |
+| | `completed` | Boolean | 완료 여부 |
+| | `completedAt` | String | 완료된 날짜 (`toDateString()`) |
+
+---
+
+### 3-5. Heatmap 비율 계산 (파생 계산)
 
 ```jsx
 // 1. Action Items 점수 (Yellow)
-//    DONE = 1점, DOING = 서브퀘스트 완료율 × 0.8점, TODO = 0점
+//    오늘 완료된(completedAt === todayString) 항목만 점수에 반영
 let totalActionScore = 0
 todos.forEach(t => {
-  if (t.status === 'done') totalActionScore += 1
-  else if (t.status === 'doing' && t.subquests?.length > 0) {
-    const subCompleted = t.subquests.filter(sq => sq.completed).length
-    totalActionScore += (subCompleted / t.subquests.length) * 0.8
+  if (t.status === 'done' && t.completedAt === todayString) totalActionScore += 1
+  else if (t.status === 'doing' && t.subtasks?.length > 0) {
+    const subCompletedToday = t.subtasks.filter(s => s.completed && s.completedAt === todayString).length
+    totalActionScore += (subCompletedToday / t.subtasks.length) * 0.8
   }
 })
 const todosRatio = todos.length > 0 ? totalActionScore / todos.length : 0
 
 // 2. Quests 달성률 (Magenta)
-const completedQuests = quests.filter(q => q.completed).length
-const questsRatio = quests.length > 0 ? completedQuests / quests.length : 0
+//    오늘 수행 완료한 퀘스트만 카운트
+const completedQuestsToday = quests.filter(q => q.completed && q.completedAt === todayString).length
+const questsRatio = quests.length > 0 ? completedQuestsToday / quests.length : 0
 
 // 3. Focus 달성률 (Cyan) — 목표: 3시간(10800초)
 const targetFocusSeconds = 10800
@@ -214,7 +241,7 @@ const todayRatio = (questsRatio + todosRatio + focusRatio) / 3
 
 ---
 
-### 3-5. useEffect 묶음
+### 3-6. useEffect 묶음
 
 #### 자동 저장 (LocalStorage 동기화)
 
@@ -281,7 +308,7 @@ const adjustHeight = useCallback(() => {
 
 ---
 
-### 3-6. 핸들러 함수 목록
+### 3-7. 핸들러 함수 목록
 
 #### Action Items 관련
 
@@ -290,9 +317,9 @@ const adjustHeight = useCallback(() => {
 | `addTodo(e)` | 입력창 값을 todos 배열 **맨 앞**에 추가 |
 | `cycleStatus(id)` | `todo → doing → done → todo` 순환 |
 | `deleteTodo(id)` | 해당 ID 항목 제거 |
-| `addSubquest(todoId, text)` | DOING 상태 항목에 서브퀘스트 추가 |
-| `toggleSubquest(todoId, subId)` | 서브퀘스트 완료/미완료 토글 |
-| `deleteSubquest(todoId, subId)` | 서브퀘스트 삭제 |
+| `addSubtask(todoId, text)` | DOING 상태 항목에 서브태스크 추가 |
+| `toggleSubtask(todoId, subId)` | 서브태스크 완료/미완료 토글 |
+| `deleteSubtask(todoId, subId)` | 서브태스크 삭제 |
 | `startEditTodo(id, text)` | 수정 모드 진입 (editingTodoId 설정) |
 | `saveEditTodo(id)` | 수정된 텍스트 저장 및 수정 모드 해제 |
 
@@ -325,10 +352,18 @@ const importData = (e) => {
 ```jsx
 const onDragEnd = (result) => {
   if (!result.destination) return   // 목록 밖으로 드롭하면 무시
-  const { type } = result           // 'todos' or 'quests'
-  // 배열에서 꺼내서 새 위치에 삽입 후 setState
+  const { type } = result           // 'todos', 'quests', or 'subtasks-[id]'
+  // 1. todos/quests: 배열 재정렬
+  // 2. subtasks-[id]: 해당 부모 todo 내의 subtasks 배열만 필터링하여 재정렬
 }
 ```
+
+#### 알림 시스템 (V1.1 추가)
+
+| 함수 | 동작 |
+| --- | --- |
+| `showToast(msg)` | 하단 플로팅 토스트 메시지 표시 (3초 후 자동 소멸) |
+| `askConfirm(title, msg, onOk)` | 커스텀 글래스모피즘 모달을 띄워 사용자 확인 수신 |
 
 ---
 
@@ -345,7 +380,7 @@ App.css
 ├── Heatmap 관련            — .heatmap-grid, .heatmap-cell, .layer-y/m/c
 ├── .one-thing-hero         — 최상단 대형 타이포그래피 입력창
 ├── .dashboard-grid         — 메인 2단 레이아웃 (Action Items + Sidebar)
-├── Action Items 관련       — .todo-item, .status-badge, .subquests-container
+├── Action Items 관련       — .todo-item, .status-badge, .subtasks-container
 ├── Daily Quests 관련       — .quest-list, .quest-item, .quest-icon
 ├── Timer 관련              — .timer-display, .btn-timer
 ├── Brain Dump 관련         — .brain-dump-input

@@ -32,13 +32,34 @@ function App() {
     const saved = localStorage.getItem('hub-todos')
     if (saved) {
       const parsed = JSON.parse(saved)
+      const yesterday = new Date('2026-03-13').toDateString()
       return parsed.map(t => {
+        // Legacy 'completed' boolean to 'status' migration (이미 존재하던 로직)
+        let item = t
         if (t.completed !== undefined) {
           const status = t.completed ? 'done' : 'todo'
           const { completed: _c, ...rest } = t
-          return { ...rest, status }
+          item = { ...rest, status }
         }
-        return t
+
+        // [New Migration] 기존 DONE 항목에 완료 날짜가 없으면 어제로 소급 적용
+        if (item.status === 'done' && !item.completedAt) {
+          item = { ...item, completedAt: yesterday }
+        }
+
+        // 서브태스크 마이그레이션: subquests -> subtasks
+        if (item.subquests || item.subtasks) {
+          const rawSubtasks = item.subtasks || item.subquests || []
+          item.subtasks = rawSubtasks.map(s => {
+            if (s.completed && !s.completedAt) {
+              return { ...s, completedAt: yesterday }
+            }
+            return s
+          })
+          delete item.subquests // 구버전 필드 삭제
+        }
+
+        return item
       })
     }
     return []
@@ -47,10 +68,23 @@ function App() {
   // Edit states
   const [editingTodoId, setEditingTodoId] = useState(null)
   const [editingTodoText, setEditingTodoText] = useState('')
+  const [editingSubtaskId, setEditingSubtaskId] = useState(null)
+  const [editingSubtaskText, setEditingSubtaskText] = useState('')
 
   const [quests, setQuests] = useState(() => {
     const saved = localStorage.getItem('hub-quests')
-    return saved ? JSON.parse(saved) : [
+    if (saved) {
+      const parsed = JSON.parse(saved)
+      const yesterday = new Date('2026-03-13').toDateString()
+      return parsed.map(q => {
+        // [New Migration] 기존 완료된 퀘스트에 날짜가 없으면 어제로 소급 적용
+        if (q.completed && !q.completedAt) {
+          return { ...q, completedAt: yesterday }
+        }
+        return q
+      })
+    }
+    return [
       { id: 1, text: '물 2L 마시기', completed: false },
       { id: 2, text: '30분 집중하기', completed: false }
     ]
@@ -148,22 +182,51 @@ function App() {
   const [zenFocusTimeSeconds, setZenFocusTimeSeconds] = useState(0)
   const [isZenTimerRunning, setIsZenTimerRunning] = useState(false)
 
+  // Toast notification state
+  const [toast, setToast] = useState({ message: '', visible: false })
+  const toastTimerRef = useRef(null)
+
+  const showToast = useCallback((msg) => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current)
+    setToast({ message: msg, visible: true })
+    toastTimerRef.current = setTimeout(() => {
+      setToast(prev => ({ ...prev, visible: false }))
+    }, 3000)
+  }, [])
+
+  // Custom Confirm Dialogue state
+  const [confirmConfig, setConfirmConfig] = useState({ visible: false, title: '', message: '', onConfirm: null })
+
+  const askConfirm = useCallback((title, message, onConfirm) => {
+    setConfirmConfig({ visible: true, title, message, onConfirm })
+  }, [])
+
+  const closeConfirm = () => setConfirmConfig(prev => ({ ...prev, visible: false }))
+
+  const handleConfirmAction = () => {
+    if (confirmConfig.onConfirm) confirmConfig.onConfirm()
+    closeConfirm()
+  }
+
   // ── Real-time heatmap for today (Multi-layered CMYK) ───────────────────────
   const todayString = new Date().toDateString()
 
-  // 1. Quests completion ratio (Magenta)
-  const completedQuests = quests.filter(q => q.completed).length
+  // 1. Quests completion ratio (Magenta) - Only count those completed TODAY
+  const completedQuests = quests.filter(q => q.completed && q.completedAt === todayString).length
   const questsRatio = quests.length > 0 ? completedQuests / quests.length : 0
 
-  // 2. Action Items completion ratio (Yellow) - using subquests and done status
-  // We'll calculate a score: DONE = 1, DOING = 0.5 (or by subquest ratio), TODO = 0
+  // 2. Action Items completion ratio (Yellow) - Only count progress made TODAY
   let totalActionScore = 0
   if (todos.length > 0) {
     todos.forEach(t => {
-      if (t.status === 'done') totalActionScore += 1
-      else if (t.status === 'doing' && t.subquests?.length > 0) {
-        const subCompleted = t.subquests.filter(sq => sq.completed).length
-        totalActionScore += (subCompleted / t.subquests.length) * 0.8 // Partial credit up to 80%
+      // Rule 1: Only whole tasks finished TODAY get 1 point
+      if (t.status === 'done' && t.completedAt === todayString) {
+        totalActionScore += 1
+      }
+      // Rule 2: Unfinished tasks (DOING) get partial credit for subtasks finished TODAY
+      else if (t.status === 'doing' && t.subtasks?.length > 0) {
+        const subCompletedToday = t.subtasks.filter(s => s.completed && s.completedAt === todayString).length
+        totalActionScore += (subCompletedToday / t.subtasks.length) * 0.8
       }
     })
   }
@@ -193,15 +256,15 @@ function App() {
       return updated
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [completedQuests, quests.length, todos, totalFocusSeconds])
+  }, [quests, todos, totalFocusSeconds])
 
   // ── Daily reset ─────────────────────────────────────────────────────────────
   useEffect(() => {
     const today = new Date().toDateString()
     if (today !== lastResetDate) {
-      setQuests(q => q.map(quest => ({ ...quest, completed: false })))
+      setQuests(q => q.map(quest => ({ ...quest, completed: false, completedAt: null })))
       setFocusTimeSeconds(0)
-      setOneThing('')
+      //setOneThing('') //Today's one thing reset
       setLastResetDate(today)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -334,17 +397,17 @@ function App() {
     reader.onload = (ev) => {
       try {
         const data = JSON.parse(ev.target.result)
-        if (window.confirm('백업 데이터를 복원할까요? 현재 데이터는 덮어씌워집니다.')) {
+        askConfirm('데이터 복원', '백업 데이터를 복원할까요?\n현재 데이터는 덮어씌워집니다.', () => {
           if (data.todos) setTodos(data.todos)
           if (data.quests) setQuests(data.quests)
           if (data.brainDump !== undefined) setBrainDump(data.brainDump)
           if (data.heatmap) setHeatmap(data.heatmap)
           if (data.focusTimeSeconds !== undefined) setFocusTimeSeconds(data.focusTimeSeconds)
           if (data.oneThing !== undefined) setOneThing(data.oneThing)
-          alert('✅ 복원 완료!')
-        }
+          showToast('복원 완료!')
+        })
       } catch {
-        alert('❌ 파일을 읽을 수 없습니다. 올바른 백업 파일인지 확인해주세요.')
+        showToast('파일을 읽을 수 없습니다.\n올바른 파일인지 확인해주세요.')
       }
     }
     reader.readAsText(file)
@@ -361,31 +424,60 @@ function App() {
   const cycleStatus = id => {
     setTodos(todos.map(t => {
       if (t.id !== id) return t
-      const next = { todo: 'doing', doing: 'done', done: 'todo' }
-      return { ...t, status: next[t.status] }
+
+      // [Guard] 오늘 이전에 완료된 항목은 상태 변경 방지
+      if (t.status === 'done' && t.completedAt && t.completedAt !== todayString) {
+        showToast('과거의 기록은 상태 변경이 불가능합니다. 🔒')
+        return t
+      }
+
+      const nextMap = { todo: 'doing', doing: 'done', done: 'todo' }
+      const nextStatus = nextMap[t.status]
+
+      return {
+        ...t,
+        status: nextStatus,
+        completedAt: nextStatus === 'done' ? new Date().toDateString() : null
+      }
     }))
   }
   const deleteTodo = id => setTodos(todos.filter(t => t.id !== id))
 
-  const addSubquest = (todoId, text) => {
+  const addSubtask = (todoId, text) => {
     if (!text.trim()) return
     setTodos(todos.map(t => t.id === todoId ? {
       ...t,
-      subquests: [...(t.subquests || []), { id: Date.now(), text, completed: false }]
+      subtasks: [...(t.subtasks || []), { id: Date.now(), text, completed: false }]
     } : t))
   }
 
-  const toggleSubquest = (todoId, subId) => {
+  const toggleSubtask = (todoId, subId) => {
     setTodos(todos.map(t => t.id === todoId ? {
       ...t,
-      subquests: (t.subquests || []).map(s => s.id === subId ? { ...s, completed: !s.completed } : s)
+      subtasks: (t.subtasks || []).map(s => {
+        if (s.id === subId) {
+          // [Guard] 오늘 이전에 완료된 서브태스크는 상태 변경 방지
+          if (s.completed && s.completedAt && s.completedAt !== todayString) {
+            showToast('과거의 기록은 상태 변경이 불가능합니다. 🔒')
+            return s
+          }
+
+          const nextCompleted = !s.completed
+          return {
+            ...s,
+            completed: nextCompleted,
+            completedAt: nextCompleted ? new Date().toDateString() : null
+          }
+        }
+        return s
+      })
     } : t))
   }
 
-  const deleteSubquest = (todoId, subId) => {
+  const deleteSubtask = (todoId, subId) => {
     setTodos(todos.map(t => t.id === todoId ? {
       ...t,
-      subquests: (t.subquests || []).filter(s => s.id !== subId)
+      subtasks: (t.subtasks || []).filter(s => s.id !== subId)
     } : t))
   }
 
@@ -399,6 +491,19 @@ function App() {
     setEditingTodoId(null)
   }
 
+  const startEditSubtask = (id, text) => {
+    setEditingSubtaskId(id)
+    setEditingSubtaskText(text)
+  }
+  const saveEditSubtask = (todoId, subId) => {
+    if (!editingSubtaskText.trim()) return
+    setTodos(todos.map(t => t.id === todoId ? {
+      ...t,
+      subtasks: (t.subtasks || []).map(s => s.id === subId ? { ...s, text: editingSubtaskText } : s)
+    } : t))
+    setEditingSubtaskId(null)
+  }
+
   const handleTodoClick = (id) => cycleStatus(id)
 
   // ── Quest handlers ───────────────────────────────────────────────────────────
@@ -408,7 +513,17 @@ function App() {
     setQuests([{ id: Date.now(), text: questInputValue, completed: false }, ...quests])
     setQuestInputValue('')
   }
-  const toggleQuest = id => setQuests(quests.map(q => q.id === id ? { ...q, completed: !q.completed } : q))
+  const toggleQuest = id => setQuests(quests.map(q => {
+    if (q.id === id) {
+      const nextCompleted = !q.completed
+      return {
+        ...q,
+        completed: nextCompleted,
+        completedAt: nextCompleted ? new Date().toDateString() : null
+      }
+    }
+    return q
+  }))
   const deleteQuest = id => setQuests(quests.filter(q => q.id !== id))
 
   const startEditQuest = (id, text) => {
@@ -449,6 +564,17 @@ function App() {
       const [reorderedItem] = items.splice(source.index, 1)
       items.splice(destination.index, 0, reorderedItem)
       setQuests(items)
+    } else if (type.startsWith('subtasks-')) {
+      const todoId = parseInt(type.split('-')[1])
+      setTodos(prevTodos => prevTodos.map(t => {
+        if (t.id === todoId) {
+          const newSub = Array.from(t.subtasks || [])
+          const [reordered] = newSub.splice(source.index, 1)
+          newSub.splice(destination.index, 0, reordered)
+          return { ...t, subtasks: newSub }
+        }
+        return t
+      }))
     }
   }
 
@@ -476,7 +602,7 @@ function App() {
               className="zen-frog-input"
               value={oneThing}
               onChange={e => setOneThing(e.target.value)}
-              placeholder="FOCUS"
+              placeholder="오늘 제일 중요한 일은?"
               spellCheck="false"
             />
           </div>
@@ -489,6 +615,14 @@ function App() {
           </button>
         </div>
         <button className="btn-exit-zen" onClick={() => setIsZenMode(false)}>✕</button>
+
+        {/* Global Toast Notification */}
+        <div className={`toast-container ${toast.visible ? 'visible' : ''}`}>
+          <div className="toast-content">
+            <span className="toast-icon">✦</span>
+            <span className="toast-message">{toast.message}</span>
+          </div>
+        </div>
       </div>
     )
   }
@@ -510,7 +644,7 @@ function App() {
 
       {/* Chrome-style Overlay Control Bar */}
       <div className="fullscreen-overlay-trigger">
-        <div 
+        <div
           className="fullscreen-overlay-bar"
           onClick={() => window.chrome?.webview?.postMessage("close")}
         >
@@ -526,7 +660,7 @@ function App() {
           className="one-thing-hero-input"
           value={oneThing}
           onChange={e => setOneThing(e.target.value)}
-          placeholder="FOCUS"
+          placeholder="오늘 제일 중요한 일은?"
           spellCheck="false"
         />
       </div>
@@ -629,10 +763,10 @@ function App() {
                           >
                             {/* Status badge — click to cycle */}
                             <button
-                              className="status-badge"
+                              className={`status-badge ${todo.status === 'done' && todo.completedAt && todo.completedAt !== todayString ? 'locked' : ''}`}
                               style={{ borderColor: statusMeta[todo.status].color, color: statusMeta[todo.status].color }}
                               onClick={() => cycleStatus(todo.id)}
-                              title="클릭해서 상태 변경"
+                              title={todo.status === 'done' && todo.completedAt && todo.completedAt !== todayString ? '과거 완료 항목 (잠김)' : '클릭해서 상태 변경'}
                             >
                               {statusMeta[todo.status].label}
                             </button>
@@ -658,31 +792,80 @@ function App() {
                                     onClick={() => handleTodoClick(todo.id)}
                                     style={{ cursor: 'pointer' }}
                                   >
-                                    {todo.text}
+                                    {todo.text} {todo.status === 'done' && todo.completedAt && todo.completedAt !== todayString && '🔒'}
                                   </div>
                                 )}
 
                                 {todo.status === 'doing' && (
-                                  <div className="subquests-container">
-                                    {(todo.subquests || []).map(sq => (
-                                      <div key={sq.id} className="subquest-item">
-                                        <input
-                                          type="checkbox"
-                                          checked={sq.completed}
-                                          onChange={() => toggleSubquest(todo.id, sq.id)}
-                                        />
-                                        <span className={sq.completed ? 'completed' : ''}>{sq.text}</span>
-                                        <button className="btn-delete-subquest" title="세부 할일 삭제" onClick={() => deleteSubquest(todo.id, sq.id)}>✕</button>
-                                      </div>
-                                    ))}
+                                  <div className="subtasks-container">
+                                    <Droppable droppableId={`subtasks-${todo.id}`} type={`subtasks-${todo.id}`}>
+                                      {(provided) => (
+                                        <div 
+                                          className="subtask-list"
+                                          {...provided.droppableProps}
+                                          ref={provided.innerRef}
+                                        >
+                                          {(todo.subtasks || []).map((s, sIndex) => (
+                                            <Draggable key={s.id.toString()} draggableId={s.id.toString()} index={sIndex}>
+                                              {(provided, snapshot) => (
+                                                <div 
+                                                  className={`subtask-item ${s.completed && s.completedAt && s.completedAt !== todayString ? 'locked' : ''} ${snapshot.isDragging ? 'is-dragging' : ''}`}
+                                                  ref={provided.innerRef}
+                                                  {...provided.draggableProps}
+                                                  {...provided.dragHandleProps}
+                                                  style={{ ...provided.draggableProps.style }}
+                                                >
+                                                  <input
+                                                    type="checkbox"
+                                                    checked={s.completed}
+                                                    onChange={() => toggleSubtask(todo.id, s.id)}
+                                                  />
+                                                  {editingSubtaskId === s.id ? (
+                                                    <input
+                                                      type="text"
+                                                      className="todo-edit-input subtask-edit-input"
+                                                      value={editingSubtaskText}
+                                                      onChange={e => setEditingSubtaskText(e.target.value)}
+                                                      onBlur={() => saveEditSubtask(todo.id, s.id)}
+                                                      onKeyDown={e => {
+                                                        if (e.key === 'Enter') saveEditSubtask(todo.id, s.id)
+                                                        if (e.key === 'Escape') setEditingSubtaskId(null)
+                                                      }}
+                                                      autoFocus
+                                                    />
+                                                  ) : (
+                                                    <span 
+                                                      className={s.completed ? 'completed' : ''}
+                                                      onClick={() => toggleSubtask(todo.id, s.id)}
+                                                      style={{ cursor: 'pointer', flex: 1 }}
+                                                    >
+                                                      {s.text} {s.completed && s.completedAt && s.completedAt !== todayString && '🔒'}
+                                                    </span>
+                                                  )}
+                                                  <div className="subtask-actions">
+                                                    {editingSubtaskId !== s.id && (
+                                                      <>
+                                                        <button className="btn-delete-subtask" title="세부 할일 수정" onClick={() => startEditSubtask(s.id, s.text)}>✎</button>
+                                                        <button className="btn-delete-subtask" title="세부 할일 삭제" onClick={() => deleteSubtask(todo.id, s.id)}>✕</button>
+                                                      </>
+                                                    )}
+                                                  </div>
+                                                </div>
+                                              )}
+                                            </Draggable>
+                                          ))}
+                                          {provided.placeholder}
+                                        </div>
+                                      )}
+                                    </Droppable>
                                     <input
                                       type="text"
-                                      className="subquest-input"
-                                      placeholder="오늘 할 일... Enter ↵"
+                                      className="subtask-input"
+                                      placeholder="+ 세부 할일 추가..."
                                       onKeyDown={e => {
                                         if (e.nativeEvent.isComposing) return
-                                        if (e.key === 'Enter') {
-                                          addSubquest(todo.id, e.target.value)
+                                        if (e.key === 'Enter' && e.target.value.trim()) {
+                                          addSubtask(todo.id, e.target.value)
                                           e.target.value = ''
                                         }
                                       }}
@@ -727,7 +910,7 @@ function App() {
                 className="btn-timer reset"
                 onClick={() => {
                   setIsFocusTimerRunning(false)
-                  if (window.confirm('오늘 집중 시간을 리셋할까요?')) setFocusTimeSeconds(0)
+                  askConfirm('집중 시간 리셋', '오늘 집중 시간을 리셋할까요?', () => setFocusTimeSeconds(0))
                 }}
               >↺ Reset</button>
             </div>
@@ -820,7 +1003,7 @@ function App() {
               {brainDump && (
                 <button
                   className="btn-clear-dump"
-                  onClick={() => { if (window.confirm('비울까요?')) setBrainDump('') }}
+                  onClick={() => { askConfirm('브레인 덤프 삭제', '모든 내용을 비울까요?', () => setBrainDump('')) }}
                 >🗑 지우기</button>
               )}
             </div>
@@ -846,6 +1029,28 @@ function App() {
         </div>
         <p className="footer-v">00Hub</p>
       </footer>
+
+      {/* Global Toast Notification */}
+      <div className={`toast-container ${toast.visible ? 'visible' : ''}`}>
+        <div className="toast-content">
+          <span className="toast-icon">✦</span>
+          <span className="toast-message">{toast.message}</span>
+        </div>
+      </div>
+
+      {/* Premium Confirm Modal */}
+      {confirmConfig.visible && (
+        <div className="modal-overlay" onClick={closeConfirm}>
+          <div className="modal-content card" onClick={e => e.stopPropagation()}>
+            <h3 className="modal-title">{confirmConfig.title}</h3>
+            <p className="modal-message">{confirmConfig.message}</p>
+            <div className="modal-actions">
+              <button className="btn-modal btn-cancel" onClick={closeConfirm}>취소</button>
+              <button className="btn-modal btn-confirm" onClick={handleConfirmAction}>확인</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

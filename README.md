@@ -8,7 +8,8 @@
 
 - **The One Thing** — 오늘의 가장 중요한 목표를 화면 전체로
 - **Discipline Map** — 30일 성취도를 CMYK 색상 레이어로 시각화하는 히트맵
-- **Action Items** — 3단계 상태(TODO/DOING/DONE) + 서브퀘스트 + 드래그 앤 드롭
+- **Action Items** — 3단계 상태(TODO/DOING/DONE) + 서브태스크 + 드래그 앤 드롭
+- **Premium Notifications** — 브라우저 기본창을 대체하는 커스텀 토스트 알림 및 글래스모피즘 확인 모달
 - **Daily Quests** — 자정 자동 리셋되는 반복 습관 체크리스트
 - **Deep Work Timer** — 오늘의 집중 시간 측정 (목표 3시간)
 - **Brain Dump** — 머릿속을 비우는 자유 메모장
@@ -38,10 +39,10 @@ React 19 · Vite 7 · PWA (vite-plugin-pwa) · Web Audio API · C# 런처
 
 | 문서 | 설명 |
 | --- | --- |
-| [ABOUT.md](./ABOUT.md) | 앱 전체 기능 소개 및 개발 여정 |
-| [PROJECT_GUIDE.md](./PROJECT_GUIDE.md) | 폴더 및 파일 구조 가이드 |
-| [CODE_REFERENCE.md](./CODE_REFERENCE.md) | 코드별 상세 설명 (유지보수용) |
-| [ROADMAP.md](./ROADMAP.md) | 향후 개발 계획 및 알려진 이슈 |
+| [ABOUT.md](./docs/ABOUT.md) | 앱 전체 기능 소개 및 개발 여정 |
+| [PROJECT_GUIDE.md](./docs/PROJECT_GUIDE.md) | 폴더 및 파일 구조 가이드 |
+| [CODE_REFERENCE.md](./docs/CODE_REFERENCE.md) | 코드별 상세 설명 (유지보수용) |
+| [ROADMAP.md](./docs/ROADMAP.md) | 향후 개발 계획 및 알려진 이슈 |
 
 ---
 
