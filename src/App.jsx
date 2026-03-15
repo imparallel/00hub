@@ -105,7 +105,7 @@ function App() {
   const [heatmap, setHeatmap] = useState(() => {
     const saved = localStorage.getItem('hub-heatmap-v2')
     let data = saved ? JSON.parse(saved) : {}
-    
+
     // [Migration] 3h -> 4h Goal Scaling (One-time)
     const migrationFlag = 'hub-goal-migrated-v4h'
     if (!localStorage.getItem(migrationFlag)) {
@@ -125,7 +125,7 @@ function App() {
       localStorage.setItem(migrationFlag, 'true')
       console.log('[System] Goal migration (3h->4h) completed: Past data scaled by 0.75.')
     }
-    
+
     return data
   })
   const [heatmapTooltip, setHeatmapTooltip] = useState(null)
@@ -293,14 +293,14 @@ function App() {
     if (today !== lastResetDate) {
       // 1. Daily Quests 리셋
       setQuests(q => q.map(quest => ({ ...quest, completed: false, completedAt: null })))
-      
+
       // 2. 집중 타이머 리셋 (0초부터 다시 시작)
       setFocusTimeSeconds(0)
       setZenFocusTimeSeconds(0)
-      
+
       // 3. 리셋 날짜 업데이트
       setLastResetDate(today)
-      
+
       console.log(`[System] Daily reset completed for ${today}`)
     }
   }, [currentTime, lastResetDate])
@@ -723,20 +723,51 @@ function App() {
             const pctTotal = Math.round(data.total * 100)
             const pctQ = Math.round(data.q * 100)
             const pctA = Math.round(data.a * 100)
-            
+
             // Focus ratio is re-calculated based on current targetFocusSeconds (4h by default)
-            const currentTSeconds = data.s !== undefined ? data.s : (data.t * 10800) // fallback for old data
+            const currentTSeconds = data.s !== undefined ? data.s : (data.t * 14400) // 14400 (4h) 기준 보정 (3월 13/14일 등 과거 데이터 대응)
             const displayFocusRatio = Math.min(currentTSeconds / targetFocusSeconds, 1)
             const pctT = Math.round(displayFocusRatio * 100)
 
-            // Dynamic Tooltip Data
+            // Precision Reverse Calculation Logic (Legacy Data Recovery)
+            const getLegacyCounts = (dateStr, ratioA, ratioQ) => {
+              const q_done = quests.filter(q => q.completed && q.completedAt === dateStr).length;
+              // ratioQ로부터 역산 시, q_done이 0이면 최소 1개가 완료되었다고 가정하고 분모 도출 (0.333 -> 1/0.333 = 3)
+              const q_total = ratioQ > 0 
+                ? (q_done > 0 ? Math.round(q_done / ratioQ) : Math.round(1 / ratioQ)) 
+                : 0;
+
+              let a_main = 0, a_sub = 0;
+              todos.forEach(t => {
+                if (t.status === 'done' && t.completedAt === dateStr) a_main += 1;
+                if (t.subtasks) {
+                  a_sub += t.subtasks.filter(s => s.completed && s.completedAt === dateStr).length;
+                }
+              });
+              const a_done_total = a_main + a_sub;
+              const a_total = ratioA > 0 
+                ? (a_done_total > 0 ? Math.round(a_done_total / ratioA) : Math.round(1 / ratioA)) 
+                : 0;
+
+              return { q_done: q_done || (ratioQ > 0 ? Math.round(q_total * ratioQ) : 0), q_total, a_main, a_sub, a_total };
+            };
+
+            // [Important] 데이터 유실 판정: 비율은 있는데 개수가 0이거나 정의되지 않은 경우 강제 역산
+            const needsRecovery = rawData && (
+              rawData.qa_main === undefined || 
+              (data.q > 0 && (data.qq_done === 0 || data.qq_total === 0)) ||
+              (data.a > 0 && (data.qa_main === 0 && data.qa_sub === 0))
+            );
+            const legacyCounts = needsRecovery ? getLegacyCounts(ds, data.a, data.q) : null;
+
             const tooltipData = {
               label,
               pct: pctTotal,
-              q_done: data.qq_done !== undefined ? data.qq_done : 0,
-              q_total: data.qq_total !== undefined ? data.qq_total : 0,
-              a_main: data.qa_main !== undefined ? data.qa_main : 0,
-              a_sub: data.qa_sub !== undefined ? data.qa_sub : 0,
+              q_done: legacyCounts ? legacyCounts.q_done : (data.qq_done !== undefined ? data.qq_done : 0),
+              q_total: legacyCounts ? legacyCounts.q_total : (data.qq_total !== undefined ? data.qq_total : 0),
+              a_main: legacyCounts ? legacyCounts.a_main : (data.qa_main !== undefined ? data.qa_main : 0),
+              a_sub: legacyCounts ? legacyCounts.a_sub : (data.qa_sub !== undefined ? data.qa_sub : 0),
+              a_total: legacyCounts ? legacyCounts.a_total : (data.qa_total !== undefined ? data.qa_total : 0), // 역산된 전체 개수 주입
               focusSeconds: currentTSeconds
             }
 
@@ -753,7 +784,7 @@ function App() {
 
             // Mapping for dynamic z-index and wave height
             const layerProps = {};
-            const waveHByRank = ['8px', '6px', '4px']; 
+            const waveHByRank = ['8px', '6px', '4px'];
             stats.forEach((stat, idx) => {
               layerProps[stat.key] = {
                 zIndex: idx + 1,
@@ -793,12 +824,13 @@ function App() {
               Acts {heatmapTooltip ? `(메인 ${heatmapTooltip.a_main}, 서브 ${heatmapTooltip.a_sub})` : `(메인 ${qa_main}, 서브 ${qa_sub})`}
             </span>
             <span style={{ color: 'var(--cmyk-magenta)' }}>
-              Quests {heatmapTooltip ? `(${heatmapTooltip.q_done}/${heatmapTooltip.q_total})` : `(${completedQuests}/${quests.length})`}
+              Quests {heatmapTooltip ? (
+                `(${heatmapTooltip.q_done}/${heatmapTooltip.q_total})`
+              ) : `(${completedQuests}/${quests.length})`}
             </span>
             <span style={{ color: 'var(--cmyk-cyan)' }}>
               Focus {heatmapTooltip ? `(${formatFocus(heatmapTooltip.focusSeconds)})` : `(${formatFocus(totalFocusSeconds)})`}
             </span>
-            <span style={{ fontWeight: 'bold' }}>Total {heatmapTooltip ? heatmapTooltip.pct : Math.round(todayRatio * 100)}%</span>
           </div>
         </div>
 
@@ -881,7 +913,7 @@ function App() {
                                   <div className="subtasks-container">
                                     <Droppable droppableId={`subtasks-${todo.id}`} type={`subtasks-${todo.id}`}>
                                       {(provided) => (
-                                        <div 
+                                        <div
                                           className="subtask-list"
                                           {...provided.droppableProps}
                                           ref={provided.innerRef}
@@ -889,7 +921,7 @@ function App() {
                                           {(todo.subtasks || []).map((s, sIndex) => (
                                             <Draggable key={s.id.toString()} draggableId={s.id.toString()} index={sIndex}>
                                               {(provided, snapshot) => (
-                                                <div 
+                                                <div
                                                   className={`subtask-item ${s.completed && s.completedAt && s.completedAt !== todayString ? 'locked' : ''} ${snapshot.isDragging ? 'is-dragging' : ''}`}
                                                   ref={provided.innerRef}
                                                   {...provided.draggableProps}
@@ -915,7 +947,7 @@ function App() {
                                                       autoFocus
                                                     />
                                                   ) : (
-                                                    <span 
+                                                    <span
                                                       className={s.completed ? 'completed' : ''}
                                                       onClick={() => toggleSubtask(todo.id, s.id)}
                                                       style={{ cursor: 'pointer', flex: 1 }}

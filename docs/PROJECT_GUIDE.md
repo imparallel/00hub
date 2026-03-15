@@ -99,8 +99,6 @@
 
 ### 📂 [*.WebView2/](file:///c:/Users/MY_NOTE/Desktop/2026%20WORKROOM/PRL%20Workspace/00_Hub) — 브라우저 데이터 및 캐시
 
-`00Hub.exe.WebView2` 폴더는 앱의 실행 데이터, 쿠키, 브라우저 캐시 등이 저장되는 곳입니다. 런처와 웹뷰 엔진이 자동으로 생성하고 관리합니다. (백업 시 이 폴더를 직접 옮기기보다는 앱 내 **Export** 기능을 권장합니다.)
-
 ---
 
 ### 🏗 [node_modules/](file:///c:/Users/MY_NOTE/Desktop/2026%20WORKROOM/PRL%20Workspace/00_Hub/node_modules) — 외부 라이브러리 창고
@@ -122,7 +120,8 @@ Git이 모든 커밋 기록과 변경 이력을 저장하는 숨겨진 폴더입
   → 백그라운드에서 npm run dev 서버 실행
   → 2초 대기 후 WebView2 창으로 localhost:5173 오픈
   → React 앱(src/)이 브라우저에 렌더링
-  → 모든 데이터는 브라우저 LocalStorage에 저장
+  → 모든 데이터는 브라우저 LocalStorage에 **초/개수 단위의 원시 데이터**로 정밀 저장
+  → 데이터 유실 시 비율 기반의 **지능형 역산(Recovery)**을 통해 수치 복구
 ```
 
 > **데이터 주의**: 브라우저 캐시를 완전히 삭제하면 데이터가 날아갈 수 있습니다. 가끔 하단 **Export** 버튼으로 백업을 권장합니다.
@@ -130,3 +129,7 @@ Git이 모든 커밋 기록과 변경 이력을 저장하는 숨겨진 폴더입
 ---
 
 평행 님, 이제 00Hub 안의 파일 하나도 빠짐없이 설명이 되었습니다! 😊
+
+---
+
+Built by Parallel Lee × Antigravity — v1.3.12 (2026.03)

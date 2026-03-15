@@ -167,7 +167,7 @@ function createWhiteNoise(ctx) {
 | `editingQuestId` | Number/null | `null` | 현재 수정 중인 퀘스트 ID |
 | `editingQuestText` | String | `''` | 수정 중인 퀘스트 임시 텍스트 |
 | `lastResetDate` | String | localStorage 또는 오늘 | 자정 리셋 기준 날짜 |
-| `heatmap` | Object | localStorage 또는 `{}` | 날짜별 성취도 데이터 `{dateString: {q,a,t,total}}` |
+| `heatmap` | Object | localStorage 또는 `{}` | 날짜별 성취도 및 **원시 데이터** `{q, a, t, total, s, qq_done, qq_total, qa_main, qa_sub}` |
 | `heatmapTooltip` | Object/null | `null` | 마우스 호버 중인 히트맵 셀 정보 |
 | `currentTime` | Date | `new Date()` | 실시간 시계용 |
 | `focusTimeSeconds` | Number | localStorage 또는 `0` | Work Timer 누적 초 |
@@ -241,7 +241,26 @@ const todayRatio = (questsRatio + todosRatio + focusRatio) / 3
 
 ---
 
-### 3-6. useEffect 묶음
+### 3-6. 데이터 복구 및 역산 로직 (Data Precision & Recovery)
+
+V1.3.x 부터는 단순히 비율(`q, a, t`)만 저장하지 않고, **원시 데이터(초, 개수)**를 함께 저장하여 목표치가 바뀌어도 과거 기록의 정확성을 유지합니다.
+
+| 필드 | 설명 |
+| --- | --- |
+| `s` | 집중 시간(초) |
+| `qq_done` / `qq_total` | 퀘스트 완료 / 전체 개수 |
+| `qa_main` / `qa_sub` | 메인 할 일 / 서브태스크 완료 개수 |
+
+#### 지능형 역산 (Reverse Calculation) 로직
+
+데이터 리셋이나 구버전 데이터로 인해 개수 정보가 유실된 경우, 히트맵의 **비율(Ratio)** 정보를 기반으로 수학적 역산을 수행합니다.
+
+- **원리**: `전체 개수 = 1 / 비율` (가장 합리적인 최소 분모 도출)
+- **철벽 방어**: 항목 리스트에 기록이 없더라도 히트맵에 '색의 흔적(비율)'이 있다면 무조건 숫자로 복구하여 정보 바에 표시합니다.
+
+---
+
+### 3-7. useEffect 묶음
 
 #### 자동 저장 (LocalStorage 동기화)
 
@@ -513,4 +532,4 @@ webView.Source = new Uri("http://localhost:5173");
 
 ---
 
-이 문서는 00Hub v1.0 기준으로 작성되었습니다 — 2026.03
+이 문서는 00Hub v1.3.12 기준으로 작성되었습니다 — 2026.03
