@@ -463,7 +463,7 @@ VitePWA({
 
 ```js
 server: {
-  port: 5173,         // 개발 서버 포트 (00Hub.exe가 이 포트로 접속)
+  port: 23500,         // 개발 서버 포트 (00Hub.exe가 이 포트로 접속)
   strictPort: true    // 포트 사용 중이면 에러 발생 (자동으로 다른 포트 잡지 않음)
 }
 ```
@@ -473,8 +473,8 @@ server: {
 ## 6. `stop_hub.bat` — 서버 종료기
 
 ```bat
-:: 포트 5173에서 LISTENING 중인 프로세스 PID를 찾아 강제 종료
-for /f "tokens=5" %%a in ('netstat -aon ^| findstr :5173 ^| findstr LISTENING') do (
+:: 포트 23500에서 LISTENING 중인 프로세스 PID를 찾아 강제 종료
+for /f "tokens=5" %%a in ('netstat -aon ^| findstr :23500 ^| findstr LISTENING') do (
     taskkill /f /pid %%a
 )
 
@@ -482,7 +482,7 @@ for /f "tokens=5" %%a in ('netstat -aon ^| findstr :5173 ^| findstr LISTENING') 
 taskkill /f /im node.exe /t
 ```
 
-> `netstat -aon`으로 모든 네트워크 연결을 나열하고, `findstr`로 5173 포트를 필터링해 PID를 뽑아냅니다.
+> `netstat -aon`으로 모든 네트워크 연결을 나열하고, `findstr`로 23500 포트를 필터링해 PID를 뽑아냅니다.
 
 ---
 
@@ -494,10 +494,10 @@ taskkill /f /im node.exe /t
 Main() (STAThread)
   ├── SetCurrentProcessExplicitAppUserModelID()  — 작업 표시줄 그룹 ID 설정
   ├── Application.Run(new Launcher())            — 메인 윈도우(Form) 실행
-       ├── KillPort(5173)                        — 포트 정리
+       ├── KillPort(23500)                        — 포트 정리
        ├── StartServer()                         — npm run dev 백그라운드 실행
        └── InitializeWebView()                   — 창 내부에 WebView2(Edge 엔진) 삽입
-            └── Source = localhost:5173          — 웹앱 주소 로드
+            └── Source = localhost:23500          — 웹앱 주소 로드
 ```
 
 ### 중요 코드 분석
@@ -515,10 +515,16 @@ webView = new WebView2();
 webView.Dock = DockStyle.Fill;
 this.Controls.Add(webView);
 await webView.EnsureCoreWebView2Async(null);
-webView.Source = new Uri("http://localhost:5173");
-```
+webView.Source = new Uri("http://localhost:23500");
 
-#### 3) 자동 종료 (OnFormClosing)
+#### 3) 실시간 디스플레이 감지 및 모델명 추출
+
+V1.3.13에 추가된 핵심 기능으로, 윈도우 시스템 이벤트를 구독하고 하위 레벨 API를 호출합니다.
+
+- **`DisplaySettingsChanged`**: 모니터 잭을 뽑거나 꽂았을 때 윈도우가 보내는 신호를 캐치하여 트레이 메뉴를 즉시 갱신합니다.
+- **`EnumDisplayDevices` (Win32 API)**: 표준 .NET 라이브러리로는 알 수 없는 모니터의 **실제 모델명**을 하드웨어 드라이버 수준에서 읽어옵니다.
+
+#### 4) 자동 종료 (OnFormClosing)
 
 창을 닫으면 백그라운드에서 돌아가는 `npm run dev` 서버도 함께 종료되도록 `taskkill /f /t` 옵션을 사용합니다. `/t`는 자식 프로세스 트리 전체를 찾아 죽입니다.
 

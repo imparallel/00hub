@@ -24,8 +24,8 @@ if not exist "node_modules" (
     call npm install
 )
 
-:: Clean port 5173 if busy
-for /f "tokens=5" %%a in ('netstat -aon ^| findstr :5173 ^| findstr LISTENING') do (
+:: Clean port 23500 if busy
+for /f "tokens=5" %%a in ('netstat -aon ^| findstr :23500 ^| findstr LISTENING') do (
     taskkill /f /pid %%a >nul 2>&1
 )
 

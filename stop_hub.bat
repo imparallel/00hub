@@ -2,8 +2,8 @@
 title 00Hub Stopper
 echo [+] Stopping 00Hub Server...
 
-:: Kill any processes running on port 5173 (Vite)
-for /f "tokens=5" %%a in ('netstat -aon ^| findstr :5173 ^| findstr LISTENING') do (
+:: Kill any processes running on port 23500 (Vite)
+for /f "tokens=5" %%a in ('netstat -aon ^| findstr :23500 ^| findstr LISTENING') do (
     taskkill /f /pid %%a >nul 2>&1
     echo [!] Server process (PID: %%a) terminated.
 )

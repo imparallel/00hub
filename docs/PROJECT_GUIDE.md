@@ -118,7 +118,7 @@ Git이 모든 커밋 기록과 변경 이력을 저장하는 숨겨진 폴더입
 ```text
 평행 님이 00Hub.exe 실행
   → 백그라운드에서 npm run dev 서버 실행
-  → 2초 대기 후 WebView2 창으로 localhost:5173 오픈
+  → 2초 대기 후 WebView2 창으로 localhost:23500 오픈
   → React 앱(src/)이 브라우저에 렌더링
   → 모든 데이터는 브라우저 LocalStorage에 **초/개수 단위의 원시 데이터**로 정밀 저장
   → 데이터 유실 시 비율 기반의 **지능형 역산(Recovery)**을 통해 수치 복구

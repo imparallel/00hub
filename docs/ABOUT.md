@@ -160,7 +160,7 @@ Black   #121212  → 기반, 명확함, 타이포그래피
 00Hub.exe 더블 클릭
   → npm run dev (Node.js 개발 서버) 백그라운드 실행
   → 2초 대기 (서버 안정화 대기)
-  → WebView2 전용 창으로 앱 로드 (http://localhost:5173)
+  → WebView2 전용 창으로 앱 로드 (http://localhost:23500)
 ```
 
 종료: `stop_hub.bat` 실행 → 서버 및 포트 완전 종료
