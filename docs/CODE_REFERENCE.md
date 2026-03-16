@@ -170,7 +170,7 @@ function createWhiteNoise(ctx) {
 | `heatmap` | Object | localStorage 또는 `{}` | 날짜별 성취도 및 **원시 데이터** `{q, a, t, total, s, qq_done, qq_total, qa_main, qa_sub}` |
 | `heatmapTooltip` | Object/null | `null` | 마우스 호버 중인 히트맵 셀 정보 |
 | `currentTime` | Date | `new Date()` | 실시간 시계용 |
-| `focusTimeSeconds` | Number | localStorage 또는 `0` | Work Timer 누적 초 |
+| `focusTimeSeconds` | Number | localStorage 또는 `0` | Focus Timer 누적 초 |
 | `isFocusTimerRunning` | Boolean | `false` | 타이머 실행 중 여부 |
 | `brainDump` | String | localStorage 또는 `''` | Brain Dump 메모 내용 |
 | `oneThing` | String | localStorage 또는 `''` | "The One Thing" 입력 내용 |

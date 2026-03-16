@@ -810,7 +810,7 @@ function App() {
               >
                 <div className="layer-y" title="Action Items" style={{ zIndex: layerProps.a.zIndex, '--wave-h': layerProps.a.waveHeight }} />
                 <div className="layer-m" title="Daily Quests" style={{ zIndex: layerProps.q.zIndex, '--wave-h': layerProps.q.waveHeight }} />
-                <div className="layer-c" title="Work Timer" style={{ zIndex: layerProps.t.zIndex, '--wave-h': layerProps.t.waveHeight }} />
+                <div className="layer-c" title="Focus Timer" style={{ zIndex: layerProps.t.zIndex, '--wave-h': layerProps.t.waveHeight }} />
                 {minPct > 0 && <div className="layer-w" style={{ zIndex: 10, '--wave-h': '4px' }} />}
               </div>
             )
@@ -1010,7 +1010,7 @@ function App() {
         <div className="sidebar-stack">
           {/* FOCUS TIMER */}
           <section className="card timer-card">
-            <h2 className="card-title">Work Timer</h2>
+            <h2 className="card-title">Focus Timer</h2>
             <div className="timer-display">{formatFocus(focusTimeSeconds)}</div>
             <div className="timer-controls">
               <button

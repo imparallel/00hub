@@ -11,7 +11,7 @@
 - **Action Items** — 3단계 상태(TODO/DOING/DONE) + 서브태스크 + 드래그 앤 드롭
 - **Premium Notifications** — 브라우저 기본창을 대체하는 커스텀 토스트 알림 및 글래스모피즘 확인 모달
 - **Daily Quests** — 자정 자동 리셋되는 반복 습관 체크리스트
-- **Work Timer** — 오늘의 집중 시간 측정 (목표 4시간)
+- **Focus Timer** — 오늘의 집중 시간 측정 (목표 4시간)
 - **Brain Dump** — 머릿속을 비우는 자유 메모장
 - **Zen Mode** — 시계 클릭 한 번으로 진입하는 완전 집중 화면 + 백색소음 + 상단 고정(TopMost)
 - **System Tray App** — 작업 표시줄 공간을 차지하지 않고 트레이 아이콘으로 상시 거주
