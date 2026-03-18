@@ -1,8 +1,97 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react'
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
 import './App.css'
 
-// ── Web Audio: white noise generator ──────────────────────────────────────────
+// ── Components: Optimized & Memoized ──────────────────────────────────────────
+
+const Clock = () => {
+  const [time, setTime] = useState(new Date())
+  useEffect(() => {
+    const id = setInterval(() => setTime(new Date()), 1000)
+    return () => clearInterval(id)
+  }, [])
+
+  const formatTime = d => d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  const formatDate = d => d.toLocaleDateString('ko-KR', { weekday: 'long', month: 'short', day: 'numeric' })
+
+  return (
+    <div className="live-clock-wrapper">
+      <div className="clock-time">{formatTime(time)}</div>
+      <div className="clock-date">{formatDate(time)}</div>
+    </div>
+  )
+}
+
+const HeatmapCell = memo(({ i, ds, rawData, isToday, quests, todos, onMouseEnter, onMouseLeave }) => {
+  const targetFocusSeconds = 14400
+  let data = { q: 0, a: 0, t: 0, total: 0 }
+  if (typeof rawData === 'number') {
+    data = { q: rawData, a: rawData, t: rawData, total: rawData }
+  } else if (rawData) {
+    data = rawData
+  }
+
+  const label = new Date(ds).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', weekday: 'short' })
+  const pctTotal = Math.round(data.total * 100)
+  const pctQ = Math.round(data.q * 100)
+  const pctA = Math.round(data.a * 100)
+  const currentTSeconds = data.s !== undefined ? data.s : (data.t * 14400)
+  const displayFocusRatio = Math.min(currentTSeconds / targetFocusSeconds, 1)
+  const pctT = Math.round(displayFocusRatio * 100)
+
+  // Recovery logic for tooltip data
+  const getLegacyCounts = () => {
+    const q_done = quests.filter(q => q.completed && q.completedAt === ds).length
+    const q_total = data.q > 0 ? (q_done > 0 ? Math.round(q_done / data.q) : Math.round(1 / data.q)) : 0
+    let a_main = 0, a_sub = 0
+    todos.forEach(t => {
+      if (t.status === 'done' && t.completedAt === ds) a_main += 1
+      if (t.subtasks) a_sub += t.subtasks.filter(s => s.completed && s.completedAt === ds).length
+    })
+    const a_done_total = a_main + a_sub
+    const a_total = data.a > 0 ? (a_done_total > 0 ? Math.round(a_done_total / data.a) : Math.round(1 / data.a)) : 0
+    return { q_done: q_done || (data.q > 0 ? Math.round(q_total * data.q) : 0), q_total, a_main, a_sub, a_total }
+  }
+
+  const needsRecovery = rawData && (
+    rawData.qa_main === undefined ||
+    (data.q > 0 && (data.qq_done === 0 || data.qq_total === 0)) ||
+    (data.a > 0 && (data.qa_main === 0 && data.qa_sub === 0))
+  )
+  const legacyCounts = needsRecovery ? getLegacyCounts() : null
+
+  const tooltipData = {
+    label, pct: pctTotal,
+    q_done: legacyCounts ? legacyCounts.q_done : (data.qq_done || 0),
+    q_total: legacyCounts ? legacyCounts.q_total : (data.qq_total || 0),
+    a_main: legacyCounts ? legacyCounts.a_main : (data.qa_main || 0),
+    a_sub: legacyCounts ? legacyCounts.a_sub : (data.qa_sub || 0),
+    a_total: legacyCounts ? legacyCounts.a_total : (data.qa_total || 0),
+    focusSeconds: currentTSeconds
+  }
+
+  const priority = { a: 1, q: 2, t: 3 }
+  const stats = [{ key: 'q', val: pctQ }, { key: 'a', val: pctA }, { key: 't', val: pctT }].sort((a, b) => (b.val - a.val) || (priority[a.key] - priority[b.key]))
+  const layerProps = {}
+  const waveHByRank = ['8px', '6px', '4px']
+  stats.forEach((stat, idx) => { layerProps[stat.key] = { zIndex: idx + 1, waveHeight: waveHByRank[idx] } })
+  const minPct = Math.min(pctQ, pctA, pctT)
+
+  return (
+    <div
+      className={`heatmap-cell layered ${isToday ? 'today' : ''}`}
+      style={{ '--pct-q': pctQ, '--pct-a': pctA, '--pct-t': pctT, '--pct-w': minPct, '--pct-total': pctTotal }}
+      onMouseEnter={() => onMouseEnter(tooltipData)}
+      onMouseLeave={onMouseLeave}
+    >
+      <div className="layer-y" title="Action Items" style={{ zIndex: layerProps.a.zIndex, '--wave-h': layerProps.a.waveHeight }} />
+      <div className="layer-m" title="Daily Quests" style={{ zIndex: layerProps.q.zIndex, '--wave-h': layerProps.q.waveHeight }} />
+      <div className="layer-c" title="Focus Timer" style={{ zIndex: layerProps.t.zIndex, '--wave-h': layerProps.t.waveHeight }} />
+      {minPct > 0 && <div className="layer-w" style={{ zIndex: 10, '--wave-h': '4px' }} />}
+    </div>
+  )
+})
+
 function createWhiteNoise(ctx) {
   const bufferSize = 2 * ctx.sampleRate
   const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate)
@@ -12,7 +101,6 @@ function createWhiteNoise(ctx) {
   source.buffer = buffer
   source.loop = true
 
-  // Gentle low-pass filter for a softer rain-like sound
   const filter = ctx.createBiquadFilter()
   filter.type = 'lowpass'
   filter.frequency.value = 800
@@ -25,7 +113,6 @@ function createWhiteNoise(ctx) {
   gainNode.connect(ctx.destination)
   return { source, gainNode }
 }
-
 function App() {
   // ── State ──────────────────────────────────────────────────────────────────
   const [todos, setTodos] = useState(() => {
@@ -33,37 +120,54 @@ function App() {
     if (saved) {
       const parsed = JSON.parse(saved)
       const yesterday = new Date('2026-03-13').toDateString()
-      return parsed.map(t => {
-        // Legacy 'completed' boolean to 'status' migration (이미 존재하던 로직)
+      const migrated = parsed.map(t => {
         let item = t
         if (t.completed !== undefined) {
           const status = t.completed ? 'done' : 'todo'
           const { completed: _c, ...rest } = t
           item = { ...rest, status }
         }
-
-        // [New Migration] 기존 DONE 항목에 완료 날짜가 없으면 어제로 소급 적용
         if (item.status === 'done' && !item.completedAt) {
           item = { ...item, completedAt: yesterday }
         }
-
-        // 서브태스크 마이그레이션: subquests -> subtasks
         if (item.subquests || item.subtasks) {
           const rawSubtasks = item.subtasks || item.subquests || []
           item.subtasks = rawSubtasks.map(s => {
-            if (s.completed && !s.completedAt) {
-              return { ...s, completedAt: yesterday }
-            }
+            if (s.completed && !s.completedAt) return { ...s, completedAt: yesterday }
             return s
           })
-          delete item.subquests // 구버전 필드 삭제
+          delete item.subquests
         }
-
         return item
+      })
+      const seen = new Set()
+      return migrated.filter(t => {
+        if (seen.has(t.id)) return false
+        seen.add(t.id)
+        return true
       })
     }
     return []
   })
+  const [archivedTodos, setArchivedTodos] = useState(() => {
+    const saved = localStorage.getItem('hub-archived-todos')
+    if (!saved) return []
+    const parsed = JSON.parse(saved)
+    const seen = new Set()
+    return parsed.filter(t => {
+      if (seen.has(t.id)) return false
+      seen.add(t.id)
+      return true
+    })
+  })
+  const [isArchiveOpen, _unused_setIsArchiveOpen] = useState(false) // Deprecated, but keeping state for safety if needed later or just removing
+  const [activeActionTab, setActiveActionTab] = useState('active') // 'active' or 'archive'
+  const [expandedTodoIds, setExpandedTodoIds] = useState(new Set()) // For archive subtask toggle
+  const [expandedArchiveDates, setExpandedArchiveDates] = useState(new Set()) // For archive date toggle
+  const [editingArchiveId, setEditingArchiveId] = useState(null)
+  const [editingArchiveText, setEditingArchiveText] = useState('')
+  const [editingArchiveSubId, setEditingArchiveSubId] = useState(null)
+  const [editingArchiveSubText, setEditingArchiveSubText] = useState('')
 
   // Edit states
   const [editingTodoId, setEditingTodoId] = useState(null)
@@ -76,12 +180,15 @@ function App() {
     if (saved) {
       const parsed = JSON.parse(saved)
       const yesterday = new Date('2026-03-13').toDateString()
-      return parsed.map(q => {
-        // [New Migration] 기존 완료된 퀘스트에 날짜가 없으면 어제로 소급 적용
-        if (q.completed && !q.completedAt) {
-          return { ...q, completedAt: yesterday }
-        }
+      const migrated = parsed.map(q => {
+        if (q.completed && !q.completedAt) return { ...q, completedAt: yesterday }
         return q
+      })
+      const seen = new Set()
+      return migrated.filter(q => {
+        if (seen.has(q.id)) return false
+        seen.add(q.id)
+        return true
       })
     }
     return [
@@ -125,10 +232,87 @@ function App() {
       localStorage.setItem(migrationFlag, 'true')
       console.log('[System] Goal migration (3h->4h) completed: Past data scaled by 0.75.')
     }
+    
+    // [Migration] Action Items Denominator Fix (Past Data Repair)
+    const repairFlag = 'hub-heatmap-repair-v1'
+    if (!localStorage.getItem(repairFlag)) {
+      const repaired = { ...data }
+      const allTodos = JSON.parse(localStorage.getItem('hub-todos') || '[]')
+      
+      Object.keys(repaired).forEach(dateStr => {
+        const entry = repaired[dateStr]
+        if (typeof entry !== 'object') return
+        
+        const targetDate = new Date(dateStr)
+        targetDate.setHours(23, 59, 59, 999)
+        const targetMaxTs = targetDate.getTime()
+        targetDate.setHours(0, 0, 0, 0)
+        const targetMinTs = targetDate.getTime()
+        
+        let score = 0
+        let activeCount = 0
+        
+        allTodos.forEach(t => {
+          const createdAt = t.id
+          if (createdAt > targetMaxTs) return // 이 날 이후 생성됨
+          
+          const completedTs = t.completedAt ? new Date(t.completedAt).setHours(0,0,0,0) : Infinity
+          
+          if (completedTs < targetMinTs) return // 이 날 이전에 이미 완료됨
+          
+          // 이 날 기준 활성/완료 항목임
+          activeCount++
+          if (completedTs === targetMinTs) {
+            // 이 날 완료함 (메인 점수)
+            score += 1
+          } else if (t.subtasks?.length > 0) {
+            // 이 날 완료한 서브태스크가 있는지 확인
+            const subDoneToday = t.subtasks.filter(s => {
+              if (!s.completed || !s.completedAt) return false
+              return new Date(s.completedAt).setHours(0,0,0,0) === targetMinTs
+            }).length
+            score += (subDoneToday / t.subtasks.length) * 0.8
+          }
+        })
+        
+        if (activeCount > 0) {
+          const newA = score / activeCount
+          const newTotal = (entry.q + newA + entry.t) / 3
+          repaired[dateStr] = { ...entry, a: newA, total: newTotal, qa_total: activeCount }
+        }
+      })
+      data = repaired
+      localStorage.setItem('hub-heatmap-v2', JSON.stringify(data))
+      localStorage.setItem(repairFlag, 'true')
+      console.log('[System] Heatmap repair completed: Past Action Items ratios recalculated.')
+    }
 
     return data
   })
   const [heatmapTooltip, setHeatmapTooltip] = useState(null)
+
+  const [isPageVisible, setIsPageVisible] = useState(true)
+  useEffect(() => {
+    const handleVisibility = () => setIsPageVisible(document.visibilityState === 'visible')
+    document.addEventListener('visibilitychange', handleVisibility)
+    
+    // WebView2 런처로부터 가시성 메시지 수신
+    const handleMessage = (e) => {
+      if (e.data === 'visibility:hidden') setIsPageVisible(false)
+      if (e.data === 'visibility:visible') setIsPageVisible(true)
+    }
+    
+    if (window.chrome?.webview) {
+      window.chrome.webview.addEventListener('message', handleMessage);
+    }
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility)
+      if (window.chrome?.webview) {
+        window.chrome.webview.removeEventListener('message', handleMessage);
+      }
+    }
+  }, [])
 
   const [currentTime, setCurrentTime] = useState(new Date())
   const [focusTimeSeconds, setFocusTimeSeconds] = useState(() => {
@@ -254,7 +438,8 @@ function App() {
       }
     })
   }
-  const todosRatio = todos.length > 0 ? totalActionScore / todos.length : 0
+  const activeTodosForToday = todos.filter(t => t.status !== 'done' || t.completedAt === todayString)
+  const todosRatio = activeTodosForToday.length > 0 ? totalActionScore / activeTodosForToday.length : 0
 
   // 3. Focus Timer ratio (Cyan) - Target: 4 hours = 14400 seconds (Updated from 3h)
   const targetFocusSeconds = 14400
@@ -275,6 +460,7 @@ function App() {
           qq_total: quests.length,   // Quest total count (Raw)
           qa_main: qa_main,          // Action main done count (Raw)
           qa_sub: qa_sub,            // Action sub done count (Raw)
+          qa_total: activeTodosForToday.length, // Action total count (Denominator)
           q: questsRatio,   // Calculated Magenta ratio for visual
           a: todosRatio,    // Calculated Yellow ratio for visual
           t: focusRatio,    // Calculated Cyan ratio for visual
@@ -305,9 +491,27 @@ function App() {
     }
   }, [currentTime, lastResetDate])
 
-  // ── Live Clock ──────────────────────────────────────────────────────────────
+  // ── Auto-Archive Action Items (Lock -> Archive) ───────────────────────────
   useEffect(() => {
-    const id = setInterval(() => setCurrentTime(new Date()), 1000)
+    const toArchive = todos.filter(t => t.status === 'done' && t.completedAt && t.completedAt !== todayString)
+    
+    if (toArchive.length > 0) {
+      setArchivedTodos(prev => {
+        // 이미 보관소에 있는 ID는 제외하고 추가 (중복 방지)
+        const existingIds = new Set(prev.map(t => t.id))
+        const newToArchive = toArchive.filter(t => !existingIds.has(t.id))
+        return [...newToArchive, ...prev]
+      })
+      setTodos(prev => prev.filter(t => !(t.status === 'done' && t.completedAt && t.completedAt !== todayString)))
+      console.log(`[System] Archived ${toArchive.length} past items. (Date: ${todayString})`)
+    }
+  }, [todos, todayString]) // todayString 의존성 추가로 자정 변경 시 즉시 실행
+
+  useEffect(() => { localStorage.setItem('hub-archived-todos', JSON.stringify(archivedTodos)) }, [archivedTodos])
+
+  // ── Live Clock (Only for date/midnight checks, not for display) ──────────────
+  useEffect(() => {
+    const id = setInterval(() => setCurrentTime(new Date()), 10000) // Reduced frequency
     return () => clearInterval(id)
   }, [])
 
@@ -348,7 +552,16 @@ function App() {
       noiseRef.current?.source.stop()
       noiseRef.current = null
       setIsNoiseOn(false)
+      // Cleanup AudioContext when not in use
+      if (audioCtxRef.current) {
+        audioCtxRef.current.close()
+        audioCtxRef.current = null
+      }
     } else {
+      if (!audioCtxRef.current) {
+        audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)()
+      }
+      const ctx = audioCtxRef.current
       if (ctx.state === 'suspended') ctx.resume()
       noiseRef.current = createWhiteNoise(ctx)
       noiseRef.current.source.start()
@@ -359,7 +572,7 @@ function App() {
   // Sync isZenMode (Simplified for always-fullscreen mode)
   useEffect(() => {
     if (!isZenMode) {
-      window.chrome?.webview?.postMessage("topmost:false")
+      window.chrome?.webview?.postMessage("zen:off")
       if (isNoiseOn) {
         noiseRef.current?.source.stop()
         noiseRef.current = null
@@ -375,7 +588,7 @@ function App() {
         wasDwtRunning.current = false
       }
     } else {
-      window.chrome?.webview?.postMessage("topmost:true")
+      window.chrome?.webview?.postMessage("zen:on")
       if (isFocusTimerRunning) {
         wasDwtRunning.current = true
         setIsFocusTimerRunning(false)
@@ -393,7 +606,6 @@ function App() {
       setZenFocusTimeSeconds(0)
       setIsZenTimerRunning(true)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isZenMode])
 
   // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -404,12 +616,23 @@ function App() {
     return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`
   }
 
+  // Pre-calculate 30 days of dates to avoid re-calculating inside render
+  const heatmapDates = useMemo(() => {
+    return Array.from({ length: 30 }).map((_, i) => {
+      const date = new Date()
+      date.setDate(date.getDate() - (29 - i))
+      return { ds: date.toDateString(), isToday: i === 29 }
+    })
+  }, [currentTime.toDateString()])
+
+
   // ── Backup / Restore ─────────────────────────────────────────────────────────
   const exportData = () => {
     const data = {
       version: 1,
       exportedAt: new Date().toISOString(),
       todos,
+      archivedTodos, // 보관 데이터 포함
       quests,
       brainDump,
       heatmap,
@@ -433,7 +656,10 @@ function App() {
       try {
         const data = JSON.parse(ev.target.result)
         askConfirm('데이터 복원', '백업 데이터를 복원할까요?\n현재 데이터는 덮어씌워집니다.', () => {
+          // 중복 방지를 위해 ID 기반으로 병합하거나 덮어씌움
+          // 여기서는 '덮어씌우기' 정책이므로 그대로 적용하되, 보관 데이터까지 포함
           if (data.todos) setTodos(data.todos)
+          if (data.archivedTodos) setArchivedTodos(data.archivedTodos)
           if (data.quests) setQuests(data.quests)
           if (data.brainDump !== undefined) setBrainDump(data.brainDump)
           if (data.heatmap) setHeatmap(data.heatmap)
@@ -541,6 +767,78 @@ function App() {
 
   const handleTodoClick = (id) => cycleStatus(id)
 
+  const toggleExpand = (id, e) => {
+    if (e) e.stopPropagation()
+    setExpandedTodoIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const toggleArchiveDate = (date) => {
+    setExpandedArchiveDates(prev => {
+      const next = new Set(prev)
+      if (next.has(date)) next.delete(date)
+      else next.add(date)
+      return next
+    })
+  }
+
+  // ── Archive Editing ──────────────────────────────────────────────────────────
+  const startEditArchive = (id, text) => {
+    setEditingArchiveId(id)
+    setEditingArchiveText(text)
+  }
+
+  const saveEditArchive = (id) => {
+    if (!editingArchiveText.trim()) return
+    setArchivedTodos(prev => prev.map(t => t.id === id ? { ...t, text: editingArchiveText } : t))
+    setEditingArchiveId(null)
+  }
+
+  const deleteArchiveTodo = (id) => {
+    askConfirm('보관 항목 삭제', '이 기록을 영구히 삭제할까요?', () => {
+      setArchivedTodos(prev => prev.filter(t => t.id !== id))
+    })
+  }
+
+  const startEditArchiveSub = (todoId, subId, text) => {
+    setEditingArchiveSubId(subId)
+    setEditingArchiveSubText(text)
+  }
+
+  const saveEditArchiveSub = (todoId, subId) => {
+    if (!editingArchiveSubText.trim()) return
+    setArchivedTodos(prev => prev.map(t => {
+      if (t.id === todoId) {
+        return {
+          ...t,
+          subtasks: (t.subtasks || []).map(s => s.id === subId ? { ...s, text: editingArchiveSubText } : s)
+        }
+      }
+      return t
+    }))
+    setEditingArchiveSubId(null)
+  }
+
+  const deleteArchiveSubtask = (todoId, subId) => {
+    setArchivedTodos(prev => prev.map(t => {
+      if (t.id === todoId) {
+        return { ...t, subtasks: (t.subtasks || []).filter(s => s.id !== subId) }
+      }
+      return t
+    }))
+  }
+
+  // ── Status meta ──────────────────────────────────────────────────────────────
+  const statusMeta = {
+    todo: { label: 'TODO', color: '#adb5bd' },
+    doing: { label: 'DOING', color: 'var(--cmyk-yellow)' },
+    done: { label: 'DONE', color: 'var(--cmyk-yellow)' },
+  }
+
   // ── Quest handlers ───────────────────────────────────────────────────────────
   const addQuest = e => {
     e.preventDefault()
@@ -599,6 +897,16 @@ function App() {
       const [reorderedItem] = items.splice(source.index, 1)
       items.splice(destination.index, 0, reorderedItem)
       setQuests(items)
+    } else if (type === 'archive') {
+      if (source.droppableId !== destination.droppableId) return // 날짜 간 이동 방지
+      const date = source.droppableId.split('-')[1]
+      setArchivedTodos(prev => {
+        const otherDates = prev.filter(t => (t.completedAt || 'Unknown Date') !== date)
+        const dateItems = prev.filter(t => (t.completedAt || 'Unknown Date') === date)
+        const [reordered] = dateItems.splice(source.index, 1)
+        dateItems.splice(destination.index, 0, reordered)
+        return [...otherDates, ...dateItems]
+      })
     } else if (type.startsWith('subtasks-')) {
       const todoId = parseInt(type.split('-')[1])
       setTodos(prevTodos => prevTodos.map(t => {
@@ -613,19 +921,12 @@ function App() {
     }
   }
 
-  // ── Status meta ──────────────────────────────────────────────────────────────
-  const statusMeta = {
-    todo: { label: 'TODO', color: '#adb5bd' },
-    doing: { label: 'DOING', color: 'var(--cmyk-yellow)' },
-    done: { label: 'DONE', color: 'var(--cmyk-yellow)' },
-  }
-
   // ── ZEN MODE ─────────────────────────────────────────────────────────────────
   if (isZenMode) {
     return (
-      <div className="app-container zen-mode">
+      <div className={`app-container zen-mode ${!isPageVisible ? 'app-paused' : ''}`}>
         <div className="live-clock zen-clock">
-          <div className="clock-time">{formatTime(currentTime)}</div>
+          <Clock />
         </div>
         <div className="zen-content">
 
@@ -664,15 +965,14 @@ function App() {
 
   // ── MAIN DASHBOARD ────────────────────────────────────────────────────────────
   return (
-    <div className="app-container">
+    <div className={`app-container ${!isPageVisible ? 'app-paused' : ''}`}>
       <header className="header">
         <div>
           <h1>00Hub<span className="title-dot">.</span></h1>
         </div>
         <div className="header-actions">
           <div className="live-clock" onClick={() => setIsZenMode(true)} title="젠 모드 시작">
-            <div className="clock-time">{formatTime(currentTime)}</div>
-            <div className="clock-date">{formatDate(currentTime)}</div>
+            <Clock />
           </div>
         </div>
       </header>
@@ -704,117 +1004,19 @@ function App() {
       <section className="card heatmap-card heatmap-top">
         <h2 className="card-title">Discipline Map</h2>
         <div className="heatmap-grid">
-          {Array.from({ length: 30 }).map((_, i) => {
-            const date = new Date()
-            date.setDate(date.getDate() - (29 - i))
-            const ds = date.toDateString()
-            const isToday = i === 29
-
-            // Handle legacy single-value numbers vs new layered objects
-            const rawData = heatmap[ds]
-            let data = { q: 0, a: 0, t: 0, total: 0 }
-            if (typeof rawData === 'number') {
-              data = { q: rawData, a: rawData, t: rawData, total: rawData } // fallback
-            } else if (rawData) {
-              data = rawData
-            }
-
-            const label = date.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', weekday: 'short' })
-            const pctTotal = Math.round(data.total * 100)
-            const pctQ = Math.round(data.q * 100)
-            const pctA = Math.round(data.a * 100)
-
-            // Focus ratio is re-calculated based on current targetFocusSeconds (4h by default)
-            const currentTSeconds = data.s !== undefined ? data.s : (data.t * 14400) // 14400 (4h) 기준 보정 (3월 13/14일 등 과거 데이터 대응)
-            const displayFocusRatio = Math.min(currentTSeconds / targetFocusSeconds, 1)
-            const pctT = Math.round(displayFocusRatio * 100)
-
-            // Precision Reverse Calculation Logic (Legacy Data Recovery)
-            const getLegacyCounts = (dateStr, ratioA, ratioQ) => {
-              const q_done = quests.filter(q => q.completed && q.completedAt === dateStr).length;
-              // ratioQ로부터 역산 시, q_done이 0이면 최소 1개가 완료되었다고 가정하고 분모 도출 (0.333 -> 1/0.333 = 3)
-              const q_total = ratioQ > 0 
-                ? (q_done > 0 ? Math.round(q_done / ratioQ) : Math.round(1 / ratioQ)) 
-                : 0;
-
-              let a_main = 0, a_sub = 0;
-              todos.forEach(t => {
-                if (t.status === 'done' && t.completedAt === dateStr) a_main += 1;
-                if (t.subtasks) {
-                  a_sub += t.subtasks.filter(s => s.completed && s.completedAt === dateStr).length;
-                }
-              });
-              const a_done_total = a_main + a_sub;
-              const a_total = ratioA > 0 
-                ? (a_done_total > 0 ? Math.round(a_done_total / ratioA) : Math.round(1 / ratioA)) 
-                : 0;
-
-              return { q_done: q_done || (ratioQ > 0 ? Math.round(q_total * ratioQ) : 0), q_total, a_main, a_sub, a_total };
-            };
-
-            // [Important] 데이터 유실 판정: 비율은 있는데 개수가 0이거나 정의되지 않은 경우 강제 역산
-            const needsRecovery = rawData && (
-              rawData.qa_main === undefined || 
-              (data.q > 0 && (data.qq_done === 0 || data.qq_total === 0)) ||
-              (data.a > 0 && (data.qa_main === 0 && data.qa_sub === 0))
-            );
-            const legacyCounts = needsRecovery ? getLegacyCounts(ds, data.a, data.q) : null;
-
-            const tooltipData = {
-              label,
-              pct: pctTotal,
-              q_done: legacyCounts ? legacyCounts.q_done : (data.qq_done !== undefined ? data.qq_done : 0),
-              q_total: legacyCounts ? legacyCounts.q_total : (data.qq_total !== undefined ? data.qq_total : 0),
-              a_main: legacyCounts ? legacyCounts.a_main : (data.qa_main !== undefined ? data.qa_main : 0),
-              a_sub: legacyCounts ? legacyCounts.a_sub : (data.qa_sub !== undefined ? data.qa_sub : 0),
-              a_total: legacyCounts ? legacyCounts.a_total : (data.qa_total !== undefined ? data.qa_total : 0), // 역산된 전체 개수 주입
-              focusSeconds: currentTSeconds
-            }
-
-            // Dynamic Layering Logic: Sort by percentage to determine z-index (higher pct = lower z-index)
-            const priority = { a: 1, q: 2, t: 3 }; // Yellow(a) is back(1), Magenta(q) mid(2), Cyan(t) is front(3)
-            const stats = [
-              { key: 'q', val: pctQ },
-              { key: 'a', val: pctA },
-              { key: 't', val: pctT }
-            ].sort((a, b) => {
-              if (b.val !== a.val) return b.val - a.val; // Higher value goes back
-              return priority[a.key] - priority[b.key]; // Tie-break: C -> Y -> M
-            });
-
-            // Mapping for dynamic z-index and wave height
-            const layerProps = {};
-            const waveHByRank = ['8px', '6px', '4px'];
-            stats.forEach((stat, idx) => {
-              layerProps[stat.key] = {
-                zIndex: idx + 1,
-                waveHeight: waveHByRank[idx]
-              };
-            });
-
-            const minPct = Math.min(pctQ, pctA, pctT);
-
-            return (
-              <div
-                key={i}
-                className={`heatmap-cell layered ${isToday ? 'today' : ''}`}
-                style={{
-                  '--pct-q': pctQ,
-                  '--pct-a': pctA,
-                  '--pct-t': pctT,
-                  '--pct-w': minPct,
-                  '--pct-total': pctTotal
-                }}
-                onMouseEnter={() => setHeatmapTooltip(tooltipData)}
-                onMouseLeave={() => setHeatmapTooltip(null)}
-              >
-                <div className="layer-y" title="Action Items" style={{ zIndex: layerProps.a.zIndex, '--wave-h': layerProps.a.waveHeight }} />
-                <div className="layer-m" title="Daily Quests" style={{ zIndex: layerProps.q.zIndex, '--wave-h': layerProps.q.waveHeight }} />
-                <div className="layer-c" title="Focus Timer" style={{ zIndex: layerProps.t.zIndex, '--wave-h': layerProps.t.waveHeight }} />
-                {minPct > 0 && <div className="layer-w" style={{ zIndex: 10, '--wave-h': '4px' }} />}
-              </div>
-            )
-          })}
+          {heatmapDates.map(({ ds, isToday }, i) => (
+            <HeatmapCell
+              key={ds}
+              i={i}
+              ds={ds}
+              rawData={heatmap[ds]}
+              isToday={isToday}
+              quests={quests}
+              todos={todos}
+              onMouseEnter={setHeatmapTooltip}
+              onMouseLeave={() => setHeatmapTooltip(null)}
+            />
+          ))}
         </div>
 
         <div className="heatmap-info-bar">
@@ -841,168 +1043,311 @@ function App() {
         <div className="main-content-stack">
           {/* ACTION ITEMS — list style */}
           <section className="card action-items">
-            <h2 className="card-title">Action Items</h2>
+            <div className="card-header-group">
+              <h2 className="card-title">Action Items</h2>
+              <div className="card-header-tabs">
+                <button 
+                  className={`tab-item ${activeActionTab === 'active' ? 'active' : ''}`}
+                  onClick={() => setActiveActionTab('active')}
+                >
+                  Active
+                </button>
+                <button 
+                  className={`tab-item ${activeActionTab === 'archive' ? 'active' : ''}`}
+                  onClick={() => setActiveActionTab('archive')}
+                >
+                  Archive
+                </button>
+              </div>
+            </div>
 
-            <form onSubmit={addTodo} className="todo-input-group">
-              <input
-                type="text"
-                className="todo-input"
-                value={input}
-                onChange={e => setInput(e.target.value)}
-                placeholder="할 일 추가... Enter ↵"
-              />
-            </form>
+            {activeActionTab === 'active' ? (
+              <>
+                <form onSubmit={addTodo} className="todo-input-group">
+                  <input
+                    type="text"
+                    className="todo-input"
+                    value={input}
+                    onChange={e => setInput(e.target.value)}
+                    placeholder="할 일 추가... Enter ↵"
+                  />
+                </form>
 
-            <DragDropContext onDragEnd={onDragEnd}>
-              <Droppable droppableId="todos-list" type="todos">
-                {(provided) => (
-                  <div
-                    className="todo-list"
-                    {...provided.droppableProps}
-                    ref={provided.innerRef}
-                  >
-                    {todos.length === 0 && (
-                      <div className="empty-column">할 일을 추가해보세요!</div>
-                    )}
-                    {todos.map((todo, index) => (
-                      <Draggable key={todo.id.toString()} draggableId={todo.id.toString()} index={index}>
-                        {(provided, snapshot) => (
-                          <div
-                            className={`todo-item status-${todo.status} ${snapshot.isDragging ? 'is-dragging' : ''}`}
-                            ref={provided.innerRef}
-                            {...provided.draggableProps}
-                            {...provided.dragHandleProps}
-                            style={{ ...provided.draggableProps.style }}
-                          >
-                            {/* Status badge — click to cycle */}
-                            <button
-                              className={`status-badge ${todo.status === 'done' && todo.completedAt && todo.completedAt !== todayString ? 'locked' : ''}`}
-                              style={{ borderColor: statusMeta[todo.status].color, color: statusMeta[todo.status].color }}
-                              onClick={() => cycleStatus(todo.id)}
-                              title={todo.status === 'done' && todo.completedAt && todo.completedAt !== todayString ? '과거 완료 항목 (잠김)' : '클릭해서 상태 변경'}
-                            >
-                              {statusMeta[todo.status].label}
-                            </button>
+                <DragDropContext onDragEnd={onDragEnd}>
+                  <Droppable droppableId="todos-list" type="todos">
+                    {(provided) => (
+                      <div
+                        className="todo-list"
+                        {...provided.droppableProps}
+                        ref={provided.innerRef}
+                      >
+                        {todos.length === 0 && (
+                          <div className="empty-column">할 일을 추가해보세요!</div>
+                        )}
+                        {todos.map((todo, index) => (
+                          <Draggable key={todo.id.toString()} draggableId={todo.id.toString()} index={index}>
+                            {(provided, snapshot) => (
+                              <div
+                                className={`todo-item status-${todo.status} ${snapshot.isDragging ? 'is-dragging' : ''}`}
+                                ref={provided.innerRef}
+                                {...provided.draggableProps}
+                                {...provided.dragHandleProps}
+                                style={{ ...provided.draggableProps.style }}
+                              >
+                                {/* Status badge — click to cycle */}
+                                <button
+                                  className={`status-badge ${todo.status === 'done' && todo.completedAt && todo.completedAt !== todayString ? 'locked' : ''}`}
+                                  style={{ borderColor: statusMeta[todo.status].color, color: statusMeta[todo.status].color }}
+                                  onClick={() => cycleStatus(todo.id)}
+                                  title={todo.status === 'done' && todo.completedAt && todo.completedAt !== todayString ? '과거 완료 항목 (잠김)' : '클릭해서 상태 변경'}
+                                >
+                                  {statusMeta[todo.status].label}
+                                </button>
 
-                            <div className="todo-main-content">
-                              <div className="todo-body">
-                                {editingTodoId === todo.id ? (
-                                  <input
-                                    type="text"
-                                    className="todo-edit-input"
-                                    value={editingTodoText}
-                                    onChange={e => setEditingTodoText(e.target.value)}
-                                    onBlur={() => saveEditTodo(todo.id)}
-                                    onKeyDown={e => {
-                                      if (e.key === 'Enter') saveEditTodo(todo.id)
-                                      if (e.key === 'Escape') setEditingTodoId(null)
-                                    }}
-                                    autoFocus
-                                  />
-                                ) : (
-                                  <div
-                                    className={`todo-text ${todo.status === 'done' ? 'done-text' : ''}`}
-                                    onClick={() => handleTodoClick(todo.id)}
-                                    style={{ cursor: 'pointer' }}
-                                  >
-                                    {todo.text} {todo.status === 'done' && todo.completedAt && todo.completedAt !== todayString && '🔒'}
-                                  </div>
-                                )}
+                                <div className="todo-main-content">
+                                  <div className="todo-body">
+                                    {editingTodoId === todo.id ? (
+                                      <input
+                                        type="text"
+                                        className="todo-edit-input"
+                                        value={editingTodoText}
+                                        onChange={e => setEditingTodoText(e.target.value)}
+                                        onBlur={() => saveEditTodo(todo.id)}
+                                        onKeyDown={e => {
+                                          if (e.key === 'Enter') saveEditTodo(todo.id)
+                                          if (e.key === 'Escape') setEditingTodoId(null)
+                                        }}
+                                        autoFocus
+                                      />
+                                    ) : (
+                                      <div
+                                        className={`todo-text ${todo.status === 'done' ? 'done-text' : ''}`}
+                                        onClick={() => handleTodoClick(todo.id)}
+                                        style={{ cursor: 'pointer' }}
+                                      >
+                                        {todo.text} {todo.status === 'done' && todo.completedAt && todo.completedAt !== todayString && '🔒'}
+                                      </div>
+                                    )}
 
-                                {todo.status === 'doing' && (
-                                  <div className="subtasks-container">
-                                    <Droppable droppableId={`subtasks-${todo.id}`} type={`subtasks-${todo.id}`}>
-                                      {(provided) => (
-                                        <div
-                                          className="subtask-list"
-                                          {...provided.droppableProps}
-                                          ref={provided.innerRef}
-                                        >
-                                          {(todo.subtasks || []).map((s, sIndex) => (
-                                            <Draggable key={s.id.toString()} draggableId={s.id.toString()} index={sIndex}>
-                                              {(provided, snapshot) => (
-                                                <div
-                                                  className={`subtask-item ${s.completed && s.completedAt && s.completedAt !== todayString ? 'locked' : ''} ${snapshot.isDragging ? 'is-dragging' : ''}`}
-                                                  ref={provided.innerRef}
-                                                  {...provided.draggableProps}
-                                                  {...provided.dragHandleProps}
-                                                  style={{ ...provided.draggableProps.style }}
-                                                >
-                                                  <input
-                                                    type="checkbox"
-                                                    checked={s.completed}
-                                                    onChange={() => toggleSubtask(todo.id, s.id)}
-                                                  />
-                                                  {editingSubtaskId === s.id ? (
-                                                    <input
-                                                      type="text"
-                                                      className="todo-edit-input subtask-edit-input"
-                                                      value={editingSubtaskText}
-                                                      onChange={e => setEditingSubtaskText(e.target.value)}
-                                                      onBlur={() => saveEditSubtask(todo.id, s.id)}
-                                                      onKeyDown={e => {
-                                                        if (e.key === 'Enter') saveEditSubtask(todo.id, s.id)
-                                                        if (e.key === 'Escape') setEditingSubtaskId(null)
-                                                      }}
-                                                      autoFocus
-                                                    />
-                                                  ) : (
-                                                    <span
-                                                      className={s.completed ? 'completed' : ''}
-                                                      onClick={() => toggleSubtask(todo.id, s.id)}
-                                                      style={{ cursor: 'pointer', flex: 1 }}
+                                    {todo.status === 'doing' && (
+                                      <div className="subtasks-container">
+                                        <Droppable droppableId={`subtasks-${todo.id}`} type={`subtasks-${todo.id}`}>
+                                          {(provided) => (
+                                            <div
+                                              className="subtask-list"
+                                              {...provided.droppableProps}
+                                              ref={provided.innerRef}
+                                            >
+                                              {(todo.subtasks || []).map((s, sIndex) => (
+                                                <Draggable key={s.id.toString()} draggableId={s.id.toString()} index={sIndex}>
+                                                  {(provided, snapshot) => (
+                                                    <div
+                                                      className={`subtask-item ${s.completed && s.completedAt && s.completedAt !== todayString ? 'locked' : ''} ${snapshot.isDragging ? 'is-dragging' : ''}`}
+                                                      ref={provided.innerRef}
+                                                      {...provided.draggableProps}
+                                                      {...provided.dragHandleProps}
+                                                      style={{ ...provided.draggableProps.style }}
                                                     >
-                                                      {s.text} {s.completed && s.completedAt && s.completedAt !== todayString && '🔒'}
-                                                    </span>
+                                                      <input
+                                                        type="checkbox"
+                                                        checked={s.completed}
+                                                        onChange={() => toggleSubtask(todo.id, s.id)}
+                                                      />
+                                                      {editingSubtaskId === s.id ? (
+                                                        <input
+                                                          type="text"
+                                                          className="todo-edit-input subtask-edit-input"
+                                                          value={editingSubtaskText}
+                                                          onChange={e => setEditingSubtaskText(e.target.value)}
+                                                          onBlur={() => saveEditSubtask(todo.id, s.id)}
+                                                          onKeyDown={e => {
+                                                            if (e.key === 'Enter') saveEditSubtask(todo.id, s.id)
+                                                            if (e.key === 'Escape') setEditingSubtaskId(null)
+                                                          }}
+                                                          autoFocus
+                                                        />
+                                                      ) : (
+                                                        <span
+                                                          className={s.completed ? 'completed' : ''}
+                                                          onClick={() => toggleSubtask(todo.id, s.id)}
+                                                          style={{ cursor: 'pointer', flex: 1 }}
+                                                        >
+                                                          {s.text} {s.completed && s.completedAt && s.completedAt !== todayString && '🔒'}
+                                                        </span>
+                                                      )}
+                                                      <div className="subtask-actions">
+                                                        {editingSubtaskId !== s.id && (
+                                                          <>
+                                                            <button className="btn-delete-subtask" title="세부 할일 수정" onClick={() => startEditSubtask(s.id, s.text)}>✎</button>
+                                                            <button className="btn-delete-subtask" title="세부 할일 삭제" onClick={() => deleteSubtask(todo.id, s.id)}>✕</button>
+                                                          </>
+                                                        )}
+                                                      </div>
+                                                    </div>
                                                   )}
-                                                  <div className="subtask-actions">
-                                                    {editingSubtaskId !== s.id && (
-                                                      <>
-                                                        <button className="btn-delete-subtask" title="세부 할일 수정" onClick={() => startEditSubtask(s.id, s.text)}>✎</button>
-                                                        <button className="btn-delete-subtask" title="세부 할일 삭제" onClick={() => deleteSubtask(todo.id, s.id)}>✕</button>
-                                                      </>
+                                                </Draggable>
+                                              ))}
+                                              {provided.placeholder}
+                                            </div>
+                                          )}
+                                        </Droppable>
+                                        <input
+                                          type="text"
+                                          className="subtask-input"
+                                          placeholder="+ 세부 할일 추가..."
+                                          onKeyDown={e => {
+                                            if (e.nativeEvent.isComposing) return
+                                            if (e.key === 'Enter' && e.target.value.trim()) {
+                                              addSubtask(todo.id, e.target.value)
+                                              e.target.value = ''
+                                            }
+                                          }}
+                                        />
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {editingTodoId !== todo.id && (
+                                    <div className="todo-actions">
+                                      <button className="btn-action edit" title="수정" onClick={() => startEditTodo(todo.id, todo.text)}>✎</button>
+                                      <button className="btn-action delete" title="삭제" onClick={() => deleteTodo(todo.id)}>✕</button>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </Draggable>
+                        ))}
+                        {provided.placeholder}
+                      </div>
+                    )}
+                  </Droppable>
+                </DragDropContext>
+              </>
+            ) : (
+              <div className="inline-archive-container">
+                {archivedTodos.length === 0 ? (
+                  <div className="empty-archive">보관된 항목이 없습니다.</div>
+                ) : (
+                  <DragDropContext onDragEnd={onDragEnd}>
+                    {Object.keys(archivedTodos.reduce((acc, todo) => {
+                      const date = todo.completedAt || 'Unknown Date'
+                      if (!acc[date]) acc[date] = []
+                      acc[date].push(todo)
+                      return acc
+                    }, {})).sort((a, b) => new Date(b) - new Date(a)).map(date => {
+                      const isExpanded = expandedArchiveDates.has(date) // Default collapsed
+                      const group = archivedTodos.filter(t => (t.completedAt || 'Unknown Date') === date)
+                      
+                      return (
+                        <div key={date} className={`archive-group ${isExpanded ? 'is-expanded' : 'is-collapsed'}`}>
+                          <h4 className="archive-date" onClick={() => toggleArchiveDate(date)}>
+                            <span className="date-toggle-icon">▾</span>
+                             {date === 'Unknown Date' ? date : new Date(date).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })}
+                            <span className="group-count">{group.length} items</span>
+                          </h4>
+                          
+                          {isExpanded && (
+                            <Droppable droppableId={`archive-${date}`} type="archive">
+                              {(provided) => (
+                                <div 
+                                  className="archive-list"
+                                  {...provided.droppableProps}
+                                  ref={provided.innerRef}
+                                >
+                                  {group.map((todo, idx) => (
+                                    <Draggable key={todo.id.toString()} draggableId={todo.id.toString()} index={idx}>
+                                      {(provided, snapshot) => (
+                                        <div 
+                                          className={`archive-item ${snapshot.isDragging ? 'is-dragging' : ''}`}
+                                          ref={provided.innerRef}
+                                          {...provided.draggableProps}
+                                          {...provided.dragHandleProps}
+                                        >
+                                          <div className="archive-item-main">
+                                            <div className="archive-item-content">
+                                              {editingArchiveId === todo.id ? (
+                                                <input
+                                                  type="text"
+                                                  className="archive-edit-input"
+                                                  value={editingArchiveText}
+                                                  onChange={e => setEditingArchiveText(e.target.value)}
+                                                  onBlur={() => saveEditArchive(todo.id)}
+                                                  onKeyDown={e => {
+                                                    if (e.key === 'Enter') saveEditArchive(todo.id)
+                                                    if (e.key === 'Escape') setEditingArchiveId(null)
+                                                  }}
+                                                  autoFocus
+                                                />
+                                              ) : (
+                                                <span className="archive-item-text">{todo.text}</span>
+                                              )}
+                                              
+                                              {(todo.subtasks || []).length > 0 && (
+                                                <button 
+                                                  className={`btn-toggle-subtasks small ${expandedTodoIds.has(todo.id) ? 'expanded' : ''}`}
+                                                  onClick={(e) => toggleExpand(todo.id, e)}
+                                                >
+                                                  <span className="toggle-icon">▾</span>
+                                                  <span className="subtasks-count">{(todo.subtasks || []).length}</span>
+                                                </button>
+                                              )}
+                                            </div>
+                                            
+                                            <div className="archive-item-actions">
+                                              <button className="btn-archive-action" onClick={() => startEditArchive(todo.id, todo.text)}>✎</button>
+                                              <button className="btn-archive-action" onClick={() => deleteArchiveTodo(todo.id)}>✕</button>
+                                            </div>
+                                          </div>
+
+                                          {expandedTodoIds.has(todo.id) && todo.subtasks?.length > 0 && (
+                                            <div className="archive-subtasks">
+                                              {todo.subtasks.map(s => (
+                                                <div key={s.id} className="archive-subtask">
+                                                  <div className="archive-subtask-body">
+                                                    {editingArchiveSubId === s.id ? (
+                                                      <input
+                                                        type="text"
+                                                        className="archive-edit-input sub"
+                                                        value={editingArchiveSubText}
+                                                        onChange={e => setEditingArchiveSubText(e.target.value)}
+                                                        onBlur={() => saveEditArchiveSub(todo.id, s.id)}
+                                                        onKeyDown={e => {
+                                                          if (e.key === 'Enter') saveEditArchiveSub(todo.id, s.id)
+                                                          if (e.key === 'Escape') setEditingArchiveSubId(null)
+                                                        }}
+                                                        autoFocus
+                                                      />
+                                                    ) : (
+                                                      <span className={s.completed ? 'completed' : ''}>
+                                                        {s.completed ? '✓' : '○'} {s.text}
+                                                      </span>
                                                     )}
                                                   </div>
+                                                  <div className="archive-subtask-actions">
+                                                    <button className="btn-archive-sub-action" onClick={() => startEditArchiveSub(todo.id, s.id, s.text)}>✎</button>
+                                                    <button className="btn-archive-sub-action" onClick={() => deleteArchiveSubtask(todo.id, s.id)}>✕</button>
+                                                  </div>
                                                 </div>
-                                              )}
-                                            </Draggable>
-                                          ))}
-                                          {provided.placeholder}
+                                              ))}
+                                            </div>
+                                          )}
                                         </div>
                                       )}
-                                    </Droppable>
-                                    <input
-                                      type="text"
-                                      className="subtask-input"
-                                      placeholder="+ 세부 할일 추가..."
-                                      onKeyDown={e => {
-                                        if (e.nativeEvent.isComposing) return
-                                        if (e.key === 'Enter' && e.target.value.trim()) {
-                                          addSubtask(todo.id, e.target.value)
-                                          e.target.value = ''
-                                        }
-                                      }}
-                                    />
-                                  </div>
-                                )}
-                              </div>
-
-                              {editingTodoId !== todo.id && (
-                                <div className="todo-actions">
-                                  <button className="btn-action edit" title="수정" onClick={() => startEditTodo(todo.id, todo.text)}>✎</button>
-                                  <button className="btn-action delete" title="삭제" onClick={() => deleteTodo(todo.id)}>✕</button>
+                                    </Draggable>
+                                  ))}
+                                  {provided.placeholder}
                                 </div>
                               )}
-                            </div>
-                          </div>
-                        )}
-                      </Draggable>
-                    ))}
-                    {provided.placeholder}
-                  </div>
+                            </Droppable>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </DragDropContext>
                 )}
-              </Droppable>
-            </DragDropContext>
+              </div>
+            )}
           </section>
         </div>
 
@@ -1010,7 +1355,10 @@ function App() {
         <div className="sidebar-stack">
           {/* FOCUS TIMER */}
           <section className="card timer-card">
-            <h2 className="card-title">Focus Timer</h2>
+            <div className="card-header-group">
+              <h2 className="card-title">Focus Timer</h2>
+              {isFocusTimerRunning && <span className="timer-status-dot" />}
+            </div>
             <div className="timer-display">{formatFocus(focusTimeSeconds)}</div>
             <div className="timer-controls">
               <button
@@ -1031,9 +1379,9 @@ function App() {
 
           {/* DAILY QUESTS */}
           <section className="card quest-card">
-            <div className="quest-header">
+            <div className="card-header-group">
               <h2 className="card-title">Daily Quests</h2>
-              <span className="quest-progress">{completedQuests}/{quests.length}</span>
+              <span className="quest-progress"><span className="current">{completedQuests}</span>/{quests.length}</span>
             </div>
 
             <form onSubmit={addQuest} className="quest-input-group">

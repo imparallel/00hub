@@ -37,6 +37,17 @@ class Launcher : Form {
 
     [DllImport("user32.dll", CharSet = CharSet.Auto)]
     static extern bool EnumDisplayDevices(string lpDevice, uint iDevNum, ref DISPLAY_DEVICE lpDisplayDevice, uint dwFlags);
+    
+    [DllImport("user32.dll")]
+    private static extern bool RegisterHotKey(IntPtr hWnd, int id, int fsModifiers, int vlc);
+    
+    [DllImport("user32.dll")]
+    private static extern bool UnregisterHotKey(IntPtr hWnd, int id);
+    
+    private const int WM_HOTKEY = 0x0312;
+    private const int HOTKEY_ID = 1;
+    private const int MOD_ALT = 0x0001;
+    private const int VK_OEM_3 = 0xC0; // '`' (backtick) key
 
     [STAThread]
     static void Main() {
@@ -55,7 +66,7 @@ class Launcher : Form {
         this.FormBorderStyle = FormBorderStyle.None; // 테두리 제거
         this.WindowState = FormWindowState.Maximized; // 전체화면
         this.Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
-        // this.TopMost = true; // Alt+Tab 전환을 위해 상시 TopMost는 제거
+        this.TopMost = true; // 상시 최상단 고정 (Alt+Tab 방지)
         this.ShowInTaskbar = false; // 작업 표시줄에서 숨김
 
         InitializeTrayIcon();
@@ -74,14 +85,23 @@ class Launcher : Form {
 
         // 4. Initialize WebView2
         InitializeWebView();
+
+        // 5. Register Global HotKey (Alt + `)
+        this.HandleCreated += (s, e) => {
+            RegisterHotKey(this.Handle, HOTKEY_ID, MOD_ALT, VK_OEM_3);
+        };
     }
 
     private void InitializeTrayIcon() {
         trayMenu = new ContextMenu();
         trayMenu.MenuItems.Add("00Hub. 열기", (s, e) => {
-            this.WindowState = FormWindowState.Minimized; // 강제 갱신용
+            if (!this.Visible) {
+                this.Show();
+                webView.Show(); // WebView2도 다시 표시
+                webView.CoreWebView2.PostWebMessageAsString("visibility:visible");
+            }
+            this.WindowState = FormWindowState.Normal; // 상태 강제 초기화
             this.WindowState = FormWindowState.Maximized;
-            this.Show();
             this.Activate();
         });
 
@@ -109,8 +129,12 @@ class Launcher : Form {
         trayIcon.Visible = true;
 
         trayIcon.DoubleClick += (s, e) => {
+            if (!this.Visible) {
+                this.Show();
+                webView.Show(); // WebView2도 다시 표시
+                webView.CoreWebView2.PostWebMessageAsString("visibility:visible");
+            }
             this.WindowState = FormWindowState.Maximized;
-            this.Show();
             this.Activate();
         };
     }
@@ -185,6 +209,8 @@ class Launcher : Form {
         serverProcess = Process.Start(serverInfo);
     }
 
+    private bool isZenModeActive = false;
+
     private async void InitializeWebView() {
         webView = new WebView2();
         webView.Dock = DockStyle.Fill;
@@ -196,7 +222,7 @@ class Launcher : Form {
             
             webView.CoreWebView2.ContainsFullScreenElementChanged += (sender, args) => {
                 this.BeginInvoke((MethodInvoker)delegate {
-                    // 상시 전체화면 형태 유지하되 Alt+Tab 방해하지 않음
+                    if (!this.Visible) return;
                     this.FormBorderStyle = FormBorderStyle.None;
                     this.WindowState = FormWindowState.Maximized;
                 });
@@ -206,20 +232,21 @@ class Launcher : Form {
                 string message = args.TryGetWebMessageAsString();
                 if (message == "minimize" || message == "close") {
                     this.BeginInvoke((MethodInvoker)delegate {
-                        this.WindowState = FormWindowState.Minimized;
+                        webView.CoreWebView2.PostWebMessageAsString("visibility:hidden");
+                        webView.Hide();
+                        this.Hide();
                     });
-                } else if (message == "topmost:true") {
+                } else if (message == "topmost:true" || message == "topmost:false") {
                     this.BeginInvoke((MethodInvoker)delegate {
-                        this.TopMost = true;
+                        this.TopMost = true; 
                     });
-                } else if (message == "topmost:false") {
-                    this.BeginInvoke((MethodInvoker)delegate {
-                        this.TopMost = false;
-                    });
+                } else if (message == "zen:on") {
+                    isZenModeActive = true;
+                } else if (message == "zen:off") {
+                    isZenModeActive = false;
                 }
             };
 
-            // Wait for server to be ready with a bit more buffer for startup
             await Task.Delay(5000);
             webView.Source = new Uri("http://localhost:23500");
         } catch (Exception ex) {
@@ -227,7 +254,37 @@ class Launcher : Form {
         }
     }
 
+    protected override void WndProc(ref Message m) {
+        if (m.Msg == WM_HOTKEY && m.WParam.ToInt32() == HOTKEY_ID) {
+            if (!isZenModeActive) { // Zen 모드가 아닐 때만 토글 허용
+                ToggleWindow();
+            }
+        }
+        base.WndProc(ref m);
+    }
+
+    private void ToggleWindow() {
+        if (this.Visible) {
+            this.BeginInvoke((MethodInvoker)delegate {
+                webView.CoreWebView2.PostWebMessageAsString("visibility:hidden");
+                webView.Hide();
+                this.Hide();
+            });
+        } else {
+            this.BeginInvoke((MethodInvoker)delegate {
+                this.Show();
+                webView.Show();
+                webView.CoreWebView2.PostWebMessageAsString("visibility:visible");
+                this.WindowState = FormWindowState.Normal;
+                this.WindowState = FormWindowState.Maximized;
+                this.Activate();
+                this.TopMost = true;
+            });
+        }
+    }
+
     protected override void OnFormClosing(FormClosingEventArgs e) {
+        UnregisterHotKey(this.Handle, HOTKEY_ID);
         // Close server process tree when window is closed
         if (serverProcess != null && !serverProcess.HasExited) {
             KillProcessAndChildren(serverProcess.Id);

@@ -266,11 +266,261 @@
   font-size: clamp(1.2rem, 3.5vw, 1.6rem);
   font-weight: 800;
   letter-spacing: -0.8px;
-  margin-bottom: 1.2rem;
   color: var(--cmyk-black);
+  margin-bottom: 0;
+  line-height: 1.1;
+}
+
+.card-header-group {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.2rem;
+  width: 100%;
+}
+
+
+
+/* ── Archive Section (Super Compact Mode) ────────────────────────────────── */
+.inline-archive-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1px; /* 아이템간 간격 최소화 */
+  max-height: 60vh;
+  overflow-y: auto;
+  padding-right: 0.5rem;
+}
+
+.archive-group {
+  margin: 0;
+  padding: 0;
+}
+
+.archive-date {
   display: flex;
   align-items: center;
   gap: 0.6rem;
+  padding: 0.5rem 0.8rem;
+  background: rgba(0, 0, 0, 0.015);
+  border-radius: 8px;
+  cursor: pointer;
+  margin: 4px 0 2px 0;
+  font-size: 0.85rem;
+  font-weight: 750; /* 약간 더 명확하게 */
+  transition: all 0.2s ease;
+  user-select: none;
+  color: var(--cmyk-black);
+}
+
+.archive-date:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.date-toggle-icon {
+  font-size: 1.2rem;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  color: var(--color-text-tertiary);
+}
+
+.is-collapsed .date-toggle-icon {
+  transform: rotate(-90deg);
+}
+
+.group-count {
+  margin-left: auto;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--color-text-tertiary);
+  background: rgba(0, 0, 0, 0.05); /* 고급스러운 은은한 배경으로 복원 */
+  padding: 0.15rem 0.6rem;
+  border-radius: 20px; /* 둥근 캡슐 형태 */
+  letter-spacing: 0.2px;
+}
+
+/* ── Archive Item Interaction ──────────────────────────────────────────── */
+.archive-item {
+  background: rgba(255, 255, 255, 0.5); /* 약간의 투명도로 배경과 조화 */
+  border: 1px solid rgba(0, 0, 0, 0.03);
+  border-radius: 6px;
+  margin: 2px 0; /* 아주 살짝 띄워서 '아이템' 느낌 부여 */
+  padding: 0.7rem 1rem;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.archive-item:hover {
+  background: #fff;
+  border-color: rgba(254, 218, 0, 0.3); /* 은은한 노란색 강조 */
+  transform: translateX(2px);
+}
+
+.archive-item.is-dragging {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border-color: var(--cmyk-yellow);
+  background: #fffdf0;
+  transform: scale(1.01);
+  z-index: 100;
+}
+
+.archive-item-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.archive-item-content {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.archive-item-text {
+  font-size: 0.95rem;
+  color: var(--color-text-secondary);
+  line-height: 1.4;
+}
+
+/* ── Archive Editing ───────────────────────────────────────────────────── */
+.archive-edit-input {
+  flex: 1;
+  border: 1px solid var(--cmyk-yellow);
+  border-radius: 4px;
+  padding: 0.1rem 0.4rem;
+  font-size: 0.9rem;
+  font-family: inherit;
+  background: #fff;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(254, 218, 0, 0.1);
+}
+
+.archive-edit-input.sub {
+  font-size: 0.85rem;
+}
+
+/* ── Archive Actions ────────────────────────────────────────────────────── */
+.archive-item-actions {
+  display: flex;
+  gap: 0.4rem;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.archive-item:hover .archive-item-actions {
+  opacity: 1;
+}
+
+.btn-archive-action, .btn-archive-sub-action {
+  background: none;
+  border: none;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  padding: 0.2rem;
+  font-size: 0.85rem;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.btn-archive-action:hover {
+  color: var(--cmyk-black);
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.btn-archive-sub-action:hover {
+  color: var(--cmyk-magenta);
+}
+
+/* ── Archive Subtasks ───────────────────────────────────────────────────── */
+.archive-subtasks {
+  margin-top: 0.8rem;
+  padding-left: 1.2rem;
+  border-left: 2px solid rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.archive-subtask {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+  color: var(--color-text-tertiary);
+}
+
+.archive-subtask-body {
+  flex: 1;
+}
+
+.archive-subtask-actions {
+  display: flex;
+  gap: 0.3rem;
+  opacity: 0;
+}
+
+.archive-subtask:hover .archive-subtask-actions {
+  opacity: 1;
+}
+
+/* ── Subtask Toggle Smaller (for archive) ─────────────────────────────────── */
+.btn-toggle-subtasks.small {
+  padding: 0.05rem 0.3rem;
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.btn-toggle-subtasks.small .subtasks-count {
+  font-size: 0.65rem;
+}
+
+.card-header-flex {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.2rem;
+}
+
+.card-header-tabs {
+  display: flex;
+  gap: 1rem;
+  margin: 0;
+  border: none;
+}
+
+.tab-item {
+  background: transparent;
+  border: none;
+  padding: 0.25rem 0;
+  font-size: 0.9rem; /* 조정: 0.95rem -> 0.9rem */
+  font-weight: 800;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s ease;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.tab-item:hover {
+  color: var(--color-text-primary);
+}
+
+.tab-item.active {
+  color: var(--cmyk-black);
+}
+
+.tab-item.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0px; /* 더 밀착되도록 수치 조정 */
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: var(--cmyk-yellow);
+}
+
+.card-header-flex .card-title {
+  margin-bottom: 0;
 }
 
 .title-dot-cyan {
@@ -322,6 +572,12 @@
   overflow: hidden;
   /* Prevent waves from breaking through the top */
   transform: translateZ(0);
+  will-change: transform;
+}
+
+/* Background Pause - Stopping heavy animations when not visible */
+.app-paused * {
+  animation-play-state: paused !important;
 }
 
 /* Base layering for the 3 CMYK stats */
@@ -972,9 +1228,9 @@
 .subtasks-container {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
-  margin-top: 0.4rem;
-  padding-top: 0.4rem;
+  gap: 0.2rem; /* 간격 축소 */
+  margin-top: 0.2rem; /* 간격 축소 */
+  padding-top: 0.2rem; /* 간격 축소 */
   border-top: 1px dashed rgba(0, 0, 0, 0.05);
   animation: fadeIn 0.2s ease-out;
   width: 100%;
@@ -986,7 +1242,7 @@
   gap: 0.5rem;
   font-size: 0.85rem;
   background: transparent;
-  padding: 0.2rem 0;
+  padding: 0.1rem 0; /* 패딩 축소 */
   border-radius: 0;
 }
 
@@ -1137,7 +1393,7 @@
   font-size: 3rem;
   font-weight: 300;
   color: var(--color-text-secondary);
-  text-align: left;
+  text-align: center; /* 가운데 정렬 */
   margin: 1rem 0 1.5rem;
   letter-spacing: 0.05em;
 }
@@ -1145,9 +1401,25 @@
 .timer-controls {
   display: flex;
   gap: 0.8rem;
-  justify-content: flex-start;
+  justify-content: center; /* 가운데 정렬 */
   align-self: flex-start;
   width: 100%;
+}
+.timer-status-dot {
+  width: 8px;
+  height: 8px;
+  background: var(--cmyk-cyan);
+  border-radius: 50%;
+  display: inline-block;
+  margin-left: 0.2rem; /* 제목 옆에 착 붙게 */
+  box-shadow: 0 0 8px var(--cmyk-cyan);
+  animation: timerStatusPulse 1.5s infinite;
+}
+
+@keyframes timerStatusPulse {
+  0% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.8); }
+  100% { opacity: 1; transform: scale(1); }
 }
 
 .btn-timer {
@@ -1223,12 +1495,7 @@
 /* ????????????????????????????????????????????????????????????????????????????????????????????
    DAILY QUESTS (Magenta theme)
 ???????????????????????????????????????????????????????????????????????????????????????????? */
-.quest-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  margin-bottom: 1rem;
-}
+/* removed .quest-header since it's now .card-header-group */
 
 .quest-header .card-title {
   margin-bottom: 0;
@@ -1236,9 +1503,14 @@
 
 .quest-progress {
   font-weight: 800;
-  font-size: 1rem;
-  color: var(--cmyk-magenta);
+  font-size: 1rem; /* 조정: 0.95rem -> 1rem */
+  color: var(--cmyk-black);
   letter-spacing: -0.5px;
+  line-height: 1;
+}
+
+.quest-progress .current {
+  color: var(--cmyk-magenta);
 }
 
 .quest-list {

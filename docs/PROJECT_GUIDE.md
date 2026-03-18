@@ -26,6 +26,7 @@
 | [PROJECT_GUIDE.md](file:///c:/Users/MY_NOTE/Desktop/2026%20WORKROOM/PRL%20Workspace/00_Hub/PROJECT_GUIDE.md) | 현재 보고 계신 이 가이드. |
 | [CODE_REFERENCE.md](file:///c:/Users/MY_NOTE/Desktop/2026%20WORKROOM/PRL%20Workspace/00_Hub/CODE_REFERENCE.md) | 코드별 상세 설명 레퍼런스. |
 | [ROADMAP.md](file:///c:/Users/MY_NOTE/Desktop/2026%20WORKROOM/PRL%20Workspace/00_Hub/ROADMAP.md) | 향후 개발 계획 및 알려진 이슈. |
+| [AI_MAINTENANCE.md](file:///c:/Users/MY_NOTE/Desktop/2026%20WORKROOM/PRL%20Workspace/00_Hub/docs/AI_MAINTENANCE.md) | **AI 에이전트 전용** 유지보수 및 빌드 지침서. |
 
 ---
 
@@ -120,6 +121,7 @@ Git이 모든 커밋 기록과 변경 이력을 저장하는 숨겨진 폴더입
   → 백그라운드에서 npm run dev 서버 실행
   → 2초 대기 후 WebView2 창으로 localhost:23500 오픈
   → React 앱(src/)이 브라우저에 렌더링
+  → **v1.4.1: 앱이 모든 창 위에 상시 고정(Always on Top)되며, Alt + ` 단축키로 토글 가능**
   → 모든 데이터는 브라우저 LocalStorage에 **초/개수 단위의 원시 데이터**로 정밀 저장
   → 데이터 유실 시 비율 기반의 **지능형 역산(Recovery)**을 통해 수치 복구
 ```
@@ -132,4 +134,4 @@ Git이 모든 커밋 기록과 변경 이력을 저장하는 숨겨진 폴더입
 
 ---
 
-Built by Parallel Lee × Antigravity — v1.3.12 (2026.03)
+Built by Parallel Lee × Antigravity — v1.4.1 (2026.03.18)

@@ -8,14 +8,16 @@
 
 - **The One Thing** — 오늘의 가장 중요한 목표를 화면 전체로
 - **Discipline Map** — 30일 성취도를 CMYK 색상 레이어로 시각화하는 칵테일 히트맵
-- **Action Items** — 3단계 상태(TODO/DOING/DONE) + 서브태스크 + 드래그 앤 드롭
+- **Action Items** — 3단계 상태 + 서브태스크 + **슈퍼 보관함(날짜별 그룹화/수정/D&D)**
 - **Premium Notifications** — 브라우저 기본창을 대체하는 커스텀 토스트 알림 및 글래스모피즘 확인 모달
 - **Daily Quests** — 자정 자동 리셋되는 반복 습관 체크리스트
 - **Focus Timer** — 오늘의 집중 시간 측정 (목표 4시간)
 - **Brain Dump** — 머릿속을 비우는 자유 메모장
-- **Zen Mode** — 시계 클릭 한 번으로 진입하는 완전 집중 화면 + 백색소음 + 상단 고정(TopMost)
+- **Zen Mode** — 시계 클릭 한 번으로 진입하는 완전 집중 화면 + 백색소음
+- **Forced Always on Top** — **[New]** 앱이 항상 최상단에 고정되어 Alt+Tab으로도 가려지지 않음 (습관 형성용)
 - **System Tray App** — 작업 표시줄 공간을 차지하지 않고 트레이 아이콘으로 상시 거주
-- **Overlay Control** — 상단 호버 시 나타나는 투명 바를 통해 간편하게 최소화 (Alt+Tab 지원)
+- **Global Hotkey** — **[New]** `Alt + \`` (백틱) 키로 언제 어디서든 앱 표시/숨김 토글 (한 손 조작)
+- **Overlay Control** — 상단 호버 시 나타나는 투명 바의 'X'를 통해 트레이로 숨김
 
 ## 실행 방법
 
@@ -43,7 +45,8 @@ React 19 · Vite 7 · PWA (vite-plugin-pwa) · Web Audio API · C# 런처
 | [PROJECT_GUIDE.md](./docs/PROJECT_GUIDE.md) | 폴더 및 파일 구조 가이드 |
 | [CODE_REFERENCE.md](./docs/CODE_REFERENCE.md) | 코드별 상세 설명 (유지보수용) |
 | [ROADMAP.md](./docs/ROADMAP.md) | 향후 개발 계획 및 알려진 이슈 |
+| [AI_MAINTENANCE.md](./docs/AI_MAINTENANCE.md) | **AI 에이전트 전용** 유지보수 및 빌드 지침서 |
 
 ---
 
-Built by Parallel Lee × Antigravity — 2026.03
+Built by Parallel Lee × Antigravity — v1.4.1 (2026.03.18)
