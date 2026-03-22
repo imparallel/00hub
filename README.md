@@ -11,7 +11,7 @@
 - **Action Items** — 3단계 상태 + 서브태스크 + **슈퍼 보관함(날짜별 그룹화/수정/D&D)**
 - **Premium Notifications** — 브라우저 기본창을 대체하는 커스텀 토스트 알림 및 글래스모피즘 확인 모달
 - **Daily Quests** — 자정 자동 리셋되는 반복 습관 체크리스트
-- **Focus Timer** — 오늘의 집중 시간 측정 (목표 4시간)
+- [x] **Focus Timer** — **[Update]** 타임스탬프 기반 정밀 측정 및 백그라운드 보정(Catch-up) 지원 (목표 4시간)
 - **Brain Dump** — 머릿속을 비우는 자유 메모장
 - **Zen Mode** — 시계 클릭 한 번으로 진입하는 완전 집중 화면 + 백색소음
 - **Forced Always on Top** — **[New]** 앱이 항상 최상단에 고정되어 Alt+Tab으로도 가려지지 않음 (습관 형성용)
@@ -49,4 +49,4 @@ React 19 · Vite 7 · PWA (vite-plugin-pwa) · Web Audio API · C# 런처
 
 ---
 
-Built by Parallel Lee × Antigravity — v1.4.1 (2026.03.18)
+Built by Parallel Lee × Antigravity — v1.5.5 (2026.03.21)

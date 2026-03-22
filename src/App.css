@@ -1029,64 +1029,9 @@
 
 
 /* ── Custom Toast Notification ────────────────────────────────────────── */
-.toast-container {
-  position: fixed;
-  bottom: 2rem;
-  left: 50%;
-  transform: translateX(-50%) translateY(100px);
-  z-index: 99999;
-  pointer-events: none;
-  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-}
+/* (Duplicate toast-container removed - consolidated at line 2071) */
 
-.toast-container.visible {
-  transform: translateX(-50%) translateY(0);
-}
-
-.toast-content {
-  background: rgba(255, 255, 255, 0.4);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
-  padding: 1rem 2rem;
-  border-radius: 40px;
-  display: flex;
-  align-items: center;
-  gap: 0.8rem;
-  min-width: 320px;
-  justify-content: center;
-}
-
-.toast-icon {
-  font-size: 1.2rem;
-  color: var(--cmyk-magenta);
-}
-
-.toast-message {
-  font-weight: 700;
-  color: var(--cmyk-black);
-  letter-spacing: -0.5px;
-  font-size: 0.95rem;
-}
-
-@keyframes toastPulse {
-  0% {
-    transform: scale(1);
-  }
-
-  50% {
-    transform: scale(1.02);
-  }
-
-  100% {
-    transform: scale(1);
-  }
-}
-
-.toast-container.visible .toast-content {
-  animation: toastPulse 2s infinite ease-in-out;
-}
+/* (Duplicate toast styles removed - consolidated at line 2071) */
 
 /* Subtask Drag & Drop Styles */
 .subtask-item.is-dragging {
@@ -1215,7 +1160,8 @@
   opacity: 0;
 }
 
-.todo-item:hover .btn-action {
+.todo-item:hover .btn-action,
+.archive-item:hover .btn-action {
   opacity: 1;
 }
 
@@ -1261,20 +1207,31 @@
   color: var(--color-text-tertiary);
 }
 
-.btn-delete-subtask {
+.btn-delete-subtask,
+.btn-edit-subtask {
   opacity: 0;
   color: var(--color-text-tertiary);
   font-size: 0.7rem;
   padding: 0.2rem;
   transition: var(--transition-fast);
+  background: transparent;
+  border: none;
+  cursor: pointer;
 }
 
-.subtask-item:hover .btn-delete-subtask {
+.subtask-item:hover .btn-delete-subtask,
+.subtask-item:hover .btn-edit-subtask,
+.archive-subtask:hover .btn-delete-subtask,
+.archive-subtask:hover .btn-edit-subtask {
   opacity: 1;
 }
 
+.btn-edit-subtask:hover {
+  color: var(--cmyk-yellow);
+}
+
 .btn-delete-subtask:hover {
-  color: var(--cmyk-magenta);
+  color: var(--cmyk-black);
 }
 
 .subtask-input {
@@ -2065,11 +2022,15 @@
   z-index: 99999;
   pointer-events: none;
   /* 클릭 방해 금지 */
-  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  opacity: 0;
+  visibility: hidden;
+  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease, visibility 0.4s;
 }
 
 .toast-container.visible {
   transform: translateX(-50%) translateY(0);
+  opacity: 1;
+  visibility: visible;
 }
 
 .toast-content {
@@ -2091,7 +2052,7 @@
 
 .toast-icon {
   font-size: 1.1rem;
-  color: var(--cmyk-magenta);
+  color: var(--cmyk-black);
 }
 
 .toast-message {

@@ -162,9 +162,9 @@ function createWhiteNoise(ctx) {
 | `quests` | Array | localStorage 또는 기본 퀘스트 2개 | Daily Quests 목록 |
 | `input` | String | `''` | Action Items 입력창 임시 값 |
 | `questInputValue` | String | `''` | Daily Quests 입력창 임시 값 |
-| `editingTodoId` | Number/null | `null` | 현재 수정 중인 할 일 ID |
+| `editingTodoId` | String/null | `null` | 현재 수정 중인 할 일 ID (UUID 문자열) |
 | `editingTodoText` | String | `''` | 수정 중인 할 일 임시 텍스트 |
-| `editingQuestId` | Number/null | `null` | 현재 수정 중인 퀘스트 ID |
+| `editingQuestId` | String/null | `null` | 현재 수정 중인 퀘스트 ID |
 | `editingQuestText` | String | `''` | 수정 중인 퀘스트 임시 텍스트 |
 | `lastResetDate` | String | localStorage 또는 오늘 | 자정 리셋 기준 날짜 |
 | `heatmap` | Object | localStorage 또는 `{}` | 날짜별 성취도 및 **원시 데이터** `{q, a, t, total, s, qq_done, qq_total, qa_main, qa_sub}` |
@@ -176,7 +176,7 @@ function createWhiteNoise(ctx) {
 | `activeActionTab` | String | `'active'` | Action Items 현재 탭 (`active`/`archive`) |
 | `expandedTodoIds` | Set | `new Set()` | 보관함 내 서브태스크 펼침 상태 관리 |
 | `expandedArchiveDates` | Set | `new Set()` | 보관함 날짜 그룹 펼침 상태 관리 |
-| `editingArchiveId` | Number/null | `null` | 보관함 수정 대상 ID |
+| `editingArchiveId` | String/null | `null` | 보관함 수정 대상 ID |
 | `brainDump` | String | localStorage 또는 `''` | Brain Dump 메모 내용 |
 | `oneThing` | String | localStorage 또는 `''` | "The One Thing" 입력 내용 |
 | `isZenMode` | Boolean | `false` | 젠 모드 ON/OFF (진입 시 런처에 `topmost:true` 전송) |
@@ -184,10 +184,17 @@ function createWhiteNoise(ctx) {
 | `zenFocusTimeSeconds` | Number | `0` | 젠 모드 전용 타이머 초 |
 | `isZenTimerRunning` | Boolean | `false` | 젠 타이머 실행 중 여부 |
 | `isNoiseOn` | Boolean | `false` | 백색소음 ON/OFF |
+| `lastTickRef` | Ref | `null` | 타이머 정밀 측정을 위한 마지막 타임스탬프 기록 |
+| `audioCtxRef` | Ref | `null` | Web Audio API 컨텍스트 (백색소음용) |
+| `noiseRef` | Ref | `null` | 현재 재생 중인 노이즈 소스 객체 |
+| `wasDwtRunning` | Ref | `false` | 젠 모드 진입 전 타이머 실행 상태 저장용 |
+| `zenFrogRef` / `heroRef` | Ref | `null` | "The One Thing" 입력창 자동 높이 조절용 |
 | `toast` | Object | `{visible:false, message:''}` | 커스텀 토스트 알림 상태 |
 | `confirmConfig` | Object | `{visible:false, ...}` | 커스텀 확인 모달 설정 및 콜백 |
-| `editingSubtaskId` | Number/null | `null` | 현재 수정 중인 서브태스크 ID |
-| `todayString` | String | - | `new Date().toDateString()` (계산용 기준 날짜) |
+| `editingSubtaskId` | String/null | `null` | 현재 수정 중인 서브태스크 ID |
+| `editingSubtaskText` | String | `''` | 수정 중인 서브태스크 임시 텍스트 |
+| `isPageVisible` | Boolean | `true` | 브라우저/런처 가시성 상태 (Throttling 제어용) |
+| `todayString` | String | - | `currentTime.toDateString()` (계산용 기준 날짜) |
 
 ---
 
@@ -197,53 +204,45 @@ function createWhiteNoise(ctx) {
 
 | 항목 타입 | 속성명 | 타입 | 설명 |
 | --- | --- | --- | --- |
-| **Todo** | `id` | Number | 고유 식별자 |
+| **Todo** | `id` | String | 고유 식별자 (`timestamp-random`) |
 | | `text` | String | 할 일 내용 |
 | | `status` | String | `todo` / `doing` / `done` |
 | | `completedAt` | String | 완료된 날짜 (`toDateString()`) |
 | | `subtasks` | Array | 서브태스크 객체 배열 |
-| **Quest** | `id` | Number | 고유 식별자 |
+| **Quest** | `id` | String | 고유 식별자 (`timestamp-random`) |
 | | `text` | String | 퀘스트 내용 |
 | | `completed` | Boolean | 달성 여부 |
 | | `completedAt` | String | 달성된 날짜 (`toDateString()`) |
-| **Subtask** | `id` | Number | 고유 식별자 |
+| **Subtask** | `id` | String | 고유 식별자 (`timestamp-random`) |
 | | `text` | String | 서브태스크 내용 |
 | | `completed` | Boolean | 완료 여부 |
 | | `completedAt` | String | 완료된 날짜 (`toDateString()`) |
 
 ---
 
-### 3-5. Heatmap 비율 계산 (파생 계산)
+### 3-5. Heatmap 비율 계산 및 원자적 동기화 (v1.5.0 개정)
+
+v1.5.5부터 성능 최적화와 데이터 무결성을 위해 **Atomic Sync(원자적 동기화)** 엔진을 도입했습니다.
+
+1. **실시간 파생 계산 (`useMemo`)**:
+   UI(오늘의 진행 바, 정보 바 등)에 사용되는 수치는 `useMemo`를 통해 `quests`, `todos`, `timers` 상태가 변할 때마다 즉시 계산됩니다. 이를 통해 렌더링 딜레이를 최소화합니다.
+2. **원자적 상태 동기화 (`useEffect`)**:
+   사용자가 퀘스트를 체크하거나 타이머가 1초 경과할 때마다, 개별 수치가 아닌 **'오늘의 히트맵 데이터 객체'** 전체를 `setHeatmap`으로 갱신합니다. 이를 통해 히트맵 데이터가 항상 최신 상태를 유지하며 로컬스토리지와 정밀하게 동기화됩니다.
 
 ```jsx
-// 1. Action Items 점수 (Yellow)
-//    오늘 완료된(completedAt === todayString) 항목만 점수에 반영
-let totalActionScore = 0
-todos.forEach(t => {
-  if (t.status === 'done' && t.completedAt === todayString) totalActionScore += 1
-  else if (t.status === 'doing' && t.subtasks?.length > 0) {
-    const subCompletedToday = t.subtasks.filter(s => s.completed && s.completedAt === todayString).length
-    totalActionScore += (subCompletedToday / t.subtasks.length) * 0.8
-  }
-})
-const activeTodosForToday = todos.filter(t => t.status !== 'done' || t.completedAt === todayString)
-const todosRatio = activeTodosForToday.length > 0 ? totalActionScore / activeTodosForToday.length : 0
-
-// 2. Quests 달성률 (Magenta)
-//    오늘 수행 완료한 퀘스트만 카운트
-const completedQuestsToday = quests.filter(q => q.completed && q.completedAt === todayString).length
-const questsRatio = quests.length > 0 ? completedQuestsToday / quests.length : 0
-
-// 3. Focus 달성률 (Cyan) — 목표: 4시간(14400초)
-const targetFocusSeconds = 14400
-const focusRatio = Math.min((focusTimeSeconds + zenFocusTimeSeconds) / targetFocusSeconds, 1)
-
-// 종합 평균
-const todayRatio = (questsRatio + todosRatio + focusRatio) / 3
+// Heatmap Data Object Structure
+{
+  s: 14400,        // 초 (Focus + Zen)
+  qq_done: 4,      // 퀘스트 완료 수
+  qq_total: 5,     // 전체 퀘스트 수
+  qa_main: 3,      // 메인 할 일 완료 수
+  qa_sub: 2,       // 서브태스크 완료 수
+  qa_total: 10,    // 분모용 전체 할 일 (active)
+  q: 0.8, a: 0.5, t: 1.0, total: 0.76
+}
 ```
 
-> 이 값들은 렌더 도중 **매 렌더마다 재계산**됩니다 (useState가 아님).
-> `todayRatio`는 오늘 히트맵 셀 색상과 info bar에 사용됩니다.
+---
 
 ---
 
@@ -283,21 +282,30 @@ useEffect(() => { localStorage.setItem('hub-zenFocus',   JSON.stringify(zenFocus
 
 > 의존성 배열의 값이 바뀔 때마다 자동 저장됩니다. 별도 저장 버튼이 없는 이유입니다.
 
-#### 자정 자동 리셋 (실시간 감지)
+#### 자정 자동 리셋 및 타이머 분할 (Precision Sync)
 
 ```jsx
 useEffect(() => {
-  const today = currentTime.toDateString()
-  if (today !== lastResetDate) {        // 날짜가 바뀌었다면 (실시간 감지)
-    setQuests(q => q.map(quest => ({ ...quest, completed: false })))  // 퀘스트 초기화
-    setFocusTimeSeconds(0)              // 타이머 초기화 (0초부터 다시 시작)
-    setZenFocusTimeSeconds(0)
-    setLastResetDate(today)
+  if (isFocusTimerRunning || isZenTimerRunning) {
+    lastTickRef.current = Date.now();
+    const interval = setInterval(() => {
+      const nowMs = Date.now();
+      const deltaMs = nowMs - lastTickRef.current;
+      if (deltaMs >= 1000) {
+        // ... 날짜 변경 체크 및 시간 합산 (deltaMs 기반)
+        if (lastDate !== nowDate) {
+          setFocusTimeSeconds(secToToday); // 오늘 시간 리셋
+          setCurrentTime(new Date());      // 전체 앱 날짜 갱신
+        }
+        lastTickRef.current += Math.floor(deltaMs / 1000) * 1000;
+      }
+    }, 1000);
+    return () => clearInterval(interval);
   }
-}, [currentTime, lastResetDate])  // currentTime이 바뀔 때마다 체크
+}, [isFocusTimerRunning, isZenTimerRunning])
 ```
 
-> **실시간 동의성**: 기존에는 앱이 처음 켜질 때만 리셋을 체크했으나, 이제는 `currentTime` 상태와 연동되어 앱을 켜둔 채 자정을 넘겨도 즉시 리셋이 일어납니다. 타이머가 작동 중이라면 0초부터 끊기지 않고 다시 시작됩니다.
+> **실시간 동의성**: 기존에는 앱이 처음 켜질 때만 리셋을 체크했으나, 이제는 타이머 로직과 통합되어 가동 중 자정을 넘겨도 즉시 리셋이 일어납니다. 특히 v1.4.2부터는 **타임스탬프 기반 보정(Catch-up)** 로직이 적용되어, 최소화나 절전 모드로 인해 자바스크립트가 느려져도 실제 흐른 시간을 정확히 추적하여 자정 전후로 나누어 기록합니다.
   
 #### 데이터 무결성 및 자동 보관 (v1.4.1 강화)
 
@@ -318,16 +326,29 @@ useEffect(() => {
 
 > **철저한 중복 제거**: 앱 초기화 시점과 데이터 보관 시점에 모두 ID 기반 중복 제거 필터를 적용하여, 데이터가 불어나는 현상을 방지합니다.
 
-#### Zen Mode & 런처 통신
+#### Precision Focus Timer & Sync
+
+v1.4.2의 핵심 업데이트로, 단순 `setInterval(s => s + 1)` 방식을 폐기하고 **타임스탬프 차등 계산 방식**을 도입했습니다.
+
+- **Throttling 방지**: 브라우저(WebView2)가 백그라운드에서 JS 실행을 지연시켜도, 다음 실행 시점에 `현재 - 과거` 시각을 계산하여 밀린 시간을 한꺼번에 더해줍니다.
+- **교대 근무 시스템**: 일반 타이머와 젠 모드 타이머가 전환될 때 서로를 정지시키고 기준점을 새로 잡아 중복 기록을 원천 차단합니다.
+- **자정 분할 기록**: 타이머 가동 중 자정을 넘기면, 자정 이전 배분은 어제 히트맵에, 이후는 오늘 타이머로 자동 분할합니다.
 
 ```jsx
 useEffect(() => {
   if (!isZenMode) {
-    if (zenFocusTimeSeconds > 0) {
-      setFocusTimeSeconds(s => s + zenFocusTimeSeconds)
-      setZenFocusTimeSeconds(0)
+    // 젠 모드 종료 시
+    setIsZenTimerRunning(false)
+    if (wasDwtRunning.current) {
+      setIsFocusTimerRunning(true); // 이전에 돌고 있었다면 복구
+      wasDwtRunning.current = false
     }
   } else {
+    // 젠 모드 진입 시
+    if (isFocusTimerRunning) {
+      wasDwtRunning.current = true; // 실행 상태 저장
+      setIsFocusTimerRunning(false); // 일반 타이머 일시정지
+    }
     setIsZenTimerRunning(true)
   }
 }, [isZenMode])
@@ -407,7 +428,7 @@ const onDragEnd = (result) => {
 
 | 함수 | 동작 |
 | --- | --- |
-| `showToast(msg)` | 하단 플로팅 토스트 메시지 표시 (3초 후 자동 소멸) |
+| `showToast(msg)` | 하단 플로팅 토스트 메시지 표시 (1.5초 후 자동 소멸, Black ✦ 아이콘) |
 | `askConfirm(title, msg, onOk)` | 커스텀 글래스모피즘 모달을 띄워 사용자 확인 수신 |
 
 ---
@@ -579,4 +600,28 @@ v1.4.1에 추가된 핵심 제어 로직입니다. 창이 가려져 있더라도
 
 ---
 
-이 문서는 00Hub v1.4.1 기준으로 작성되었습니다 — 2026.03.18
+## 6. 트러블슈팅: v1.5.0 후속 UX 엣지 케이스 (드래그 앤 드롭 심화 충돌)
+
+### Issue 1: 최소화(\`visibility:hidden\`) 후 복귀 시 'The One Thing' 텍스트 창 강제 포커스 현상
+
+**원인**: WebView2 브라우저 엔진 특성 상, 창이 다시 보일 때 가장 최상단의 텍스트 포커서블(\`focusable\`) 요소에 강제로 \`focus\`를 주입하는 경향이 있습니다. 이 때 드래그 앤 드롭(\`react-beautiful-dnd\`) 엔진이 마우스를 눌러 드래그를 시작하면, 브라우저는 포커스를 해제하지 않고 상태를 캐싱해버립니다.
+**해결법(정공법 우회)**: \`App.jsx\` 최상단에 화면 밖(\`top: -1000px\`)으로 보이지 않는 투명한 더미 싱크 요소(Dummy Focus Sink)를 심고, \`visibility:visible\` 핸들러가 트리거된 직후 \`setTimeout(..., 50)\`을 부여해 해당 로직이 \`focus()\`를 탈취하게 합니다. WebView2가 창 활성화 포커스를 복구하는 미세한 타임 갭을 노린 해결책입니다.
+
+### Issue 2: 드래그 후 항목을 놓을 때, 애니메이션이 '어디선가 휙 날아오는' 이중 점프 현상
+
+**원인**: \`react-beautiful-dnd\`의 핵심 착지(Drop) 모션은 라이브러리가 내부적으로 DOM에 인라인 \`transform\`과 \`transition\`을 동적으로 계산하여 할당하는 방식으로 구현됩니다.
+만약 \`Draggable\` 래퍼(\`.archive-item\` 등) CSS 자체 구조에 \`transition: all 0.2sease\` 같은 속성이 부여되어 있으면, React가 요소 렌더링을 끝마치고 DOM 레이아웃이 확정되는 찰나(Snap) 브라우저 엔진이 이 CSS를 우선하여 레이아웃 역산 애니메이션을 단독으로 재생합니다. 결과적으로 라이브러리 애니메이션과 CSS 오리가 겹쳐 2번 날아오거나 이상한 궤도를 그립니다.
+**해결법**:
+
+```jsx
+style={{ 
+  ...provided.draggableProps.style,
+  transition: provided.draggableProps.style?.transition || 'background 0.2s, box-shadow 0.2s, border-color 0.2s'
+}}
+```
+
+항상 위 형태처럼 \`provided.draggableProps.style.transition\`를 \`Draggable\` 컴포넌트의 가장 마지막 줄(최고 우선순위) 인라인 스타일에 고정 Overriding 해야만 착지 애니메이션이 훼손되지 않습니다.
+
+---
+
+이 문서는 00Hub v1.5.5 기준으로 작성 및 갱신되었습니다 — 2026.03.21
