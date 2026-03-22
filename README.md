@@ -18,6 +18,7 @@
 - **System Tray App** — 작업 표시줄 공간을 차지하지 않고 트레이 아이콘으로 상시 거주
 - **Global Hotkey** — **[New]** `Alt + \`` (백틱) 키로 언제 어디서든 앱 표시/숨김 토글 (한 손 조작)
 - **Overlay Control** — 상단 호버 시 나타나는 투명 바의 'X'를 통해 트레이로 숨김
+- **Welcome Screen** — **[New]** 앱을 켜면 등장하는 환영 화면. 클릭 또는 아무 키나 눌러 대시보드로 진입 (종료 후 재실행 시마다 등장, F5 새로고침 시는 스킵)
 
 ## 실행 방법
 
@@ -49,4 +50,4 @@ React 19 · Vite 7 · PWA (vite-plugin-pwa) · Web Audio API · C# 런처
 
 ---
 
-Built by Parallel Lee × Antigravity — v1.5.5 (2026.03.21)
+Built by Parallel Lee × Antigravity — v1.6.1 (2026.03.22)

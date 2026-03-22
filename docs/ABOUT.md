@@ -170,7 +170,7 @@ Black   #121212  → 기반, 명확함, 타이포그래피
 ```text
 00Hub.exe 더블 클릭
   → npm run dev (Node.js 개발 서버) 백그라운드 실행
-  → 2초 대기 (서버 안정화 대기)
+  → HTTP 200 응답 확인 대기 (Vite 준비 완료 시점까지 폴링)
   → WebView2 전용 창으로 앱 로드 (http://localhost:23500)
 ```
 
@@ -190,7 +190,8 @@ Black   #121212  → 기반, 명확함, 타이포그래피
 6. **UX 다듬기** — 드래그 앤 드롭, 인라인 편집, 새 항목 상단 추가 등
 7. **V1.1 고도화** — 프리미엄 토스트/모달 알림, 서브태스크 내부 D&D, 과거 기록 수정 잠금(Lock)
 8. **v1.5.5: 미니멀리즘 강화** — 불필요한 알림 제거, 젠 모드 날짜 삭제 및 구조적 애니메이션 보정
+9. **v1.6.0: 환영 화면 안정화** — Vite HMR, PWA Service Worker, sessionStorage 세 가지 충돌 요인을 차례로 제거하여 환영 화면 이중 재생·자동 소멸·미표시 버그를 완전 해결
 
 ---
 
-Built by Parallel Lee × Antigravity — v1.5.5 (2026.03.21)
+Built by Parallel Lee × Antigravity — v1.6.1 (2026.03.22)

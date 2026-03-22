@@ -39,6 +39,7 @@ export default defineConfig({
   base: './',
   server: {
     port: 23500,
-    strictPort: true
+    strictPort: true,
+    hmr: false  // HMR Full-Reload가 환영 화면을 강제 소멸시키는 버그 차단
   }
 });

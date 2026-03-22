@@ -41,7 +41,7 @@
 | **[App.jsx](file:///c:/Users/MY_NOTE/Desktop/2026%20WORKROOM/PRL%20Workspace/00_Hub/src/App.jsx)** | **허브의 뇌.** 할 일 추가, 퀘스트 체크, 워크 타이머, 히트맵 계산, 젠 모드, 백색소음 등 모든 로직이 담겨 있습니다. |
 | **[App.css](file:///c:/Users/MY_NOTE/Desktop/2026%20WORKROOM/PRL%20Workspace/00_Hub/src/App.css)** | **허브의 세부 디자인.** 카드 배치, 유리 효과(Glassmorphism), 버튼 호버 효과 등이 정의되어 있습니다. |
 | **[index.css](file:///c:/Users/MY_NOTE/Desktop/2026%20WORKROOM/PRL%20Workspace/00_Hub/src/index.css)** | **공통 테마.** CMYK 컬러 팔레트 정의, 스크롤바 숨김 처리 등 앱 전체에 적용되는 기본 규칙입니다. |
-| **[main.jsx](file:///c:/Users/MY_NOTE/Desktop/2026%20WORKROOM/PRL%20Workspace/00_Hub/src/main.jsx)** | **앱의 시작점.** 리액트를 HTML에 연결하고 PWA 서비스 워커를 등록하는 3줄짜리 핵심 파일입니다. |
+| **[main.jsx](file:///c:/Users/MY_NOTE/Desktop/2026%20WORKROOM/PRL%20Workspace/00_Hub/src/main.jsx)** | **앱의 시작점.** 리액트를 HTML에 연결하는 핵심 파일. (주의: PWA Service Worker는 WebView2 환경에서 강제 리로드를 유발하므로 현재 비활성화) |
 | **assets/** | 소스 코드 빌드 시 포함되는 이미지 등 정적 자산 폴더입니다. Vite가 자동으로 관리합니다. |
 
 ---
@@ -119,7 +119,7 @@ Git이 모든 커밋 기록과 변경 이력을 저장하는 숨겨진 폴더입
 ```text
 평행 님이 00Hub.exe 실행
   → 백그라운드에서 npm run dev 서버 실행
-  → 2초 대기 후 WebView2 창으로 localhost:23500 오픈
+  → HTTP 200 응답 확인 대기 (Vite 준비 완료 시점까지 폴링)
   → React 앱(src/)이 브라우저에 렌더링
   → **v1.4.2: 타임스탬프 기반 정밀 타이머 보정(Catch-up) 도입 및 자정 분할 기록 지원**
   → 모든 데이터는 브라우저 LocalStorage에 **초/개수 단위의 원시 데이터**로 정밀 저장
@@ -134,4 +134,4 @@ Git이 모든 커밋 기록과 변경 이력을 저장하는 숨겨진 폴더입
 
 ---
 
-Built by Parallel Lee × Antigravity — v1.5.5 (2026.03.21)
+Built by Parallel Lee × Antigravity — v1.6.1 (2026.03.22)

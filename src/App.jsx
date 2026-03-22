@@ -19,6 +19,50 @@ const Clock = ({ hideDate = false }) => {
   )
 }
 
+const SplashScreen = ({ isVisible, onDismiss }) => {
+  const [isMounted, setIsMounted] = useState(isVisible)
+  const [ready, setReady] = useState(false)
+  const divRef = useRef(null)
+
+  useEffect(() => {
+    if (isVisible) {
+      setIsMounted(true)
+      const t = setTimeout(() => {
+        setReady(true)
+        // 포커스를 줘야 onKeyDown이 작동합니다
+        divRef.current?.focus()
+      }, 1000)
+      return () => clearTimeout(t)
+    } else {
+      setReady(false)
+      const exitTimer = setTimeout(() => setIsMounted(false), 1500)
+      return () => clearTimeout(exitTimer)
+    }
+  }, [isVisible])
+
+  if (!isMounted) return null
+
+  const handleClick = () => { if (ready) onDismiss() }
+  const handleKeyDown = () => { if (ready) onDismiss() }
+
+  return (
+    <div
+      ref={divRef}
+      className={`splash-screen ${!isVisible ? 'exit' : ''}`}
+      onClick={handleClick}
+      onKeyDown={handleKeyDown}
+      tabIndex={0}
+      style={{ outline: 'none' }}
+    >
+      <div className="splash-content">
+        <h1 className="greeting-text">환영합니다, 평행 님.</h1>
+        <div className="greeting-glow"></div>
+        <p className="greeting-hint">아무 키나 눌러서 시작</p>
+      </div>
+    </div>
+  )
+}
+
 const HeatmapCell = memo(({ i, ds, rawData, isToday, quests, todos, archivedTodos, onMouseEnter, onMouseLeave }) => {
   const targetFocusSeconds = 14400
   let data = { q: 0, a: 0, t: 0, total: 0 }
@@ -398,6 +442,21 @@ function App() {
       return saved ? JSON.parse(saved) : ''
     } catch (e) { return '' }
   })
+
+  // Splash Screen State
+  // sessionStorage는 WebView2에서 앱을 껐다 켜도 유지되어 신뢰할 수 없습니다.
+  // performance.navigation.type으로 판별:
+  //   'navigate' = 앱이 새로 켜진 것 → 환영 화면 표시
+  //   'reload'   = F5 새로고침        → 환영 화면 스킵
+  const [isSplashShowing, setIsSplashShowing] = useState(() => {
+    try {
+      const navEntry = performance.getEntriesByType('navigation')[0]
+      return navEntry?.type === 'navigate'
+    } catch {
+      return false
+    }
+  })
+
 
   // Textarea auto-resize (zen + hero) with high precision
   const adjustHeight = useCallback(() => {
@@ -1084,6 +1143,14 @@ function App() {
 
   return (
     <div className={`app-container ${isZenMode ? 'zen-mode' : ''} ${!isPageVisible ? 'app-paused' : ''}`}>
+      <SplashScreen 
+        isVisible={isSplashShowing} 
+        onDismiss={() => {
+          setIsSplashShowing(false)
+          sessionStorage.setItem('hub-splash-shown', 'true')
+        }} 
+      />
+
       {isZenMode ? (
         <>
           <div className="live-clock zen-clock">

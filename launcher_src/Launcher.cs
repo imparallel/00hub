@@ -247,10 +247,32 @@ class Launcher : Form {
                 }
             };
 
-            await Task.Delay(5000);
+            // 고정 딜레이(5000ms) 대신 실제로 포트가 LISTEN 상태가 될 때까지 폴링합니다.
+            // 이렇게 해야 Navigate가 정확히 1번만 실행되어 React 앱이 두 번 마운트 되는 현상을 막을 수 있습니다.
+            await WaitForPortAsync(23500, timeoutMs: 30000);
             webView.Source = new Uri("http://localhost:23500");
         } catch (Exception ex) {
             MessageBox.Show("WebView2 초기화 실패: " + ex.Message);
+        }
+    }
+
+    private async Task WaitForPortAsync(int port, int timeoutMs = 30000) {
+        var url = string.Format("http://localhost:{0}/", port);
+        var deadline = DateTime.UtcNow.AddMilliseconds(timeoutMs);
+        using (var client = new System.Net.Http.HttpClient()) {
+            client.Timeout = TimeSpan.FromMilliseconds(800);
+            while (DateTime.UtcNow < deadline) {
+                try {
+                    var response = await client.GetAsync(url);
+                    if (response.IsSuccessStatusCode) {
+                        // Vite가 HTML을 완전히 응답할 수 있는 시점임을 확인.
+                        // 초기 번들링이 완료되도록 아주 짧게 여유를 줍니다.
+                        await Task.Delay(200);
+                        return;
+                    }
+                } catch { }
+                await Task.Delay(300);
+            }
         }
     }
 

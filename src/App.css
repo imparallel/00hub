@@ -286,8 +286,6 @@
   display: flex;
   flex-direction: column;
   gap: 1px; /* 아이템간 간격 최소화 */
-  max-height: 60vh;
-  overflow-y: auto;
   padding-right: 0.5rem;
 }
 
@@ -2080,4 +2078,94 @@
 
 .toast-container.visible .toast-content {
   animation: toastPulse 2s infinite ease-in-out;
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+   SPLASH SCREEN (V2 - Tracing Paper & Glass Text)
+──────────────────────────────────────────────────────────────────────────── */
+.splash-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* 트레이싱 페이퍼: 대시보드가 비치는 고해상도 화이트 글래스 */
+  background: rgba(255, 255, 255, 0.72); 
+  backdrop-filter: blur(45px) saturate(160%);
+  -webkit-backdrop-filter: blur(45px) saturate(160%);
+  transition: all 1.3s cubic-bezier(0.8, 0, 0.2, 1);
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.splash-screen.exit {
+  opacity: 0;
+  transform: translateY(-100%) scale(1.05); /* 상단으로 미끄러지며 소멸 */
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.splash-content {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2.5rem;
+  width: 90%;
+  max-width: 1200px;
+}
+
+.greeting-text {
+  font-size: clamp(3rem, 10vw, 8rem);
+  font-weight: 900;
+  margin: 0;
+  z-index: 10;
+  text-align: center;
+  color: var(--cmyk-black);
+  letter-spacing: -3px; 
+  
+  opacity: 0;
+  animation: justOnceText 1.5s cubic-bezier(0.16, 1, 0.3, 1) 0.1s forwards;
+  will-change: transform, opacity, filter;
+}
+
+.greeting-hint {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--color-text-tertiary);
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  
+  opacity: 0;
+  animation: justOnceHint 1s ease-out 1.5s forwards;
+}
+
+.greeting-glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 150%;
+  height: 150%;
+  background: radial-gradient(circle, rgba(254, 218, 0, 0.12) 0%, rgba(0, 176, 255, 0.08) 50%, transparent 80%);
+  filter: blur(90px);
+  z-index: 1;
+  opacity: 0;
+  animation: justOnceGlow 1.5s ease-out 0.5s forwards;
+}
+
+@keyframes justOnceText {
+  0% { opacity: 0; transform: scale(0.95) translateY(30px); filter: blur(10px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); filter: blur(0); }
+}
+
+@keyframes justOnceHint {
+  0% { opacity: 0; transform: translateY(10px); }
+  100% { opacity: 0.6; transform: translateY(0); }
+}
+
+@keyframes justOnceGlow {
+  0% { opacity: 0; }
+  100% { opacity: 0.5; }
 }
