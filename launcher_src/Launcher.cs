@@ -307,6 +307,13 @@ class Launcher : Form {
 
     protected override void OnFormClosing(FormClosingEventArgs e) {
         UnregisterHotKey(this.Handle, HOTKEY_ID);
+
+        // 시스템 종료 시에는 윈도우가 프로세스들을 알아서 정리하므로, 
+        // 중복해서 종료를 시도하다가 taskkill.exe 오류가 발생하는 것을 방지합니다.
+        if (e.CloseReason == CloseReason.WindowsShutDown) {
+            return;
+        }
+
         // Close server process tree when window is closed
         if (serverProcess != null && !serverProcess.HasExited) {
             KillProcessAndChildren(serverProcess.Id);
@@ -316,13 +323,15 @@ class Launcher : Form {
 
     private void KillProcessAndChildren(int pid) {
         try {
-            Process.Start(new ProcessStartInfo {
-                FileName = "taskkill.exe",
-                Arguments = string.Format("/f /t /pid {0}", pid),
-                WindowStyle = ProcessWindowStyle.Hidden,
-                CreateNoWindow = true
-            }).WaitForExit();
-        } catch {}
+            ProcessStartInfo psi = new ProcessStartInfo();
+            psi.FileName = "taskkill.exe";
+            psi.Arguments = string.Format("/f /t /pid {0}", pid);
+            psi.WindowStyle = ProcessWindowStyle.Hidden;
+            psi.CreateNoWindow = true;
+            Process.Start(psi).WaitForExit();
+        } catch (Exception ex) {
+            Debug.WriteLine("Process cleanup error: " + ex.Message);
+        }
     }
 
     static void KillPort(int port) {
@@ -338,18 +347,25 @@ class Launcher : Form {
             p.WaitForExit();
 
             string[] lines = output.Split(new[] { Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries);
-            foreach (var line in lines) {
+            foreach (string line in lines) {
                 if (line.Contains(":" + port) && line.Contains("LISTENING")) {
                     string[] parts = line.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-                    string pid = parts.Last();
-                    Process.Start(new ProcessStartInfo {
-                        FileName = "taskkill.exe",
-                        Arguments = string.Format("/f /pid {0}", pid),
-                        WindowStyle = ProcessWindowStyle.Hidden,
-                        CreateNoWindow = true
-                    }).WaitForExit();
+                    string pidStr = parts[parts.Length - 1];
+                    int pid;
+                    if (int.TryParse(pidStr, out pid)) {
+                        try {
+                            ProcessStartInfo psi = new ProcessStartInfo();
+                            psi.FileName = "taskkill.exe";
+                            psi.Arguments = string.Format("/f /pid {0}", pid);
+                            psi.WindowStyle = ProcessWindowStyle.Hidden;
+                            psi.CreateNoWindow = true;
+                            Process.Start(psi).WaitForExit();
+                        } catch { }
+                    }
                 }
             }
-        } catch {}
+        } catch (Exception ex) {
+            Debug.WriteLine("KillPort error: " + ex.Message);
+        }
     }
 }

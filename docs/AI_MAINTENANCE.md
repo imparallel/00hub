@@ -12,7 +12,7 @@
 * **빌드 명령어**:
 
     ```powershell
-    C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe /target:winexe /out:00Hub.exe /win32icon:launcher_src\00Hub.ico /r:Microsoft.Web.WebView2.WinForms.dll,Microsoft.Web.WebView2.Core.dll,System.Windows.Forms.dll,System.Drawing.dll,System.dll launcher_src\Launcher.cs
+    C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe /target:winexe /out:00Hub.exe /win32icon:launcher_src\00Hub.ico /r:Microsoft.Web.WebView2.WinForms.dll,Microsoft.Web.WebView2.Core.dll,System.Windows.Forms.dll,System.Drawing.dll,System.dll,System.Net.Http.dll launcher_src\Launcher.cs
     ```
 
 * **주의**: 빌드 전 반드시 실행 중인 `00Hub.exe`를 종료해야 합니다. (`stop_hub.bat` 사용 권장)
@@ -52,4 +52,4 @@
 
 ---
 
-마지막 업데이트: 2026-03-22 (v1.6.1)
+마지막 업데이트: 2026-03-22 (v1.6.2)

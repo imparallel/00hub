@@ -50,4 +50,4 @@ React 19 · Vite 7 · PWA (vite-plugin-pwa) · Web Audio API · C# 런처
 
 ---
 
-Built by Parallel Lee × Antigravity — v1.6.1 (2026.03.22)
+Built by Parallel Lee × Antigravity — v1.6.2 (2026.03.22)
